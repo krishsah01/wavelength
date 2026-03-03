@@ -1,0 +1,455 @@
+name: Create Project Issues
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'copilot/create-docker-compose-config'
+    paths:
+      - '.github/workflows/create-issues.yml'
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  create-issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = [
+              { name: 'devops',         color: '0075ca', description: 'Infrastructure and DevOps tasks' },
+              { name: 'backend',        color: 'e4e669', description: 'Backend API work' },
+              { name: 'database',       color: 'd93f0b', description: 'Database tasks' },
+              { name: 'ai-integration', color: '0e8a16', description: 'AI and ML integration' },
+              { name: 'P0-critical',    color: 'b60205', description: 'Critical priority' },
+              { name: 'P1-high',        color: 'ff9500', description: 'High priority' },
+              { name: 'P2-medium',      color: 'fbca04', description: 'Medium priority' },
+            ];
+            for (const label of labels) {
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ...label,
+                });
+                console.log(`Created label: ${label.name}`);
+              } catch (e) {
+                if (e.status === 422) {
+                  console.log(`Label already exists: ${label.name}`);
+                } else {
+                  throw e;
+                }
+              }
+            }
+
+      - name: Create milestones
+        id: milestones
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const milestones = [
+              'Phase 2 — Docker & Database',
+              'Phase 3 — Backend Foundation',
+              'Phase 4 — Authentication',
+              'Phase 5 — Profile & Embeddings',
+              'Phase 6 — Matching Engine',
+              'Phase 7 — Conversation Starters',
+            ];
+            const ids = {};
+            for (const title of milestones) {
+              try {
+                const res = await github.rest.issues.createMilestone({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title,
+                });
+                ids[title] = res.data.number;
+                console.log(`Created milestone: ${title} (#${res.data.number})`);
+              } catch (e) {
+                if (e.status === 422) {
+                  // Already exists — find it
+                  const list = await github.rest.issues.listMilestones({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    state: 'open',
+                    per_page: 100,
+                  });
+                  const found = list.data.find(m => m.title === title);
+                  if (found) {
+                    ids[title] = found.number;
+                    console.log(`Milestone already exists: ${title} (#${found.number})`);
+                  }
+                } else {
+                  throw e;
+                }
+              }
+            }
+            core.setOutput('ids', JSON.stringify(ids));
+
+      - name: Create issues
+        uses: actions/github-script@v7
+        env:
+          MILESTONE_IDS: ${{ steps.milestones.outputs.ids }}
+        with:
+          script: |
+            const milestoneIds = JSON.parse(process.env.MILESTONE_IDS);
+
+            const issues = [
+              {
+                title: 'Write Docker Compose configuration',
+                labels: ['devops', 'P0-critical'],
+                milestone: 'Phase 2 — Docker & Database',
+                body: `## Description
+            Create \`docker-compose.yml\` defining all three services (postgres, api, web) with a shared network and persistent volume.
+
+            ## Tasks
+            - [ ] Define postgres service using \`pgvector/pgvector:pg16\` image
+            - [ ] Map port 5432, set DB credentials via environment variables
+            - [ ] Mount \`postgres_data\` volume and \`db/init.sql\` to the entrypoint directory
+            - [ ] Define api service building from \`./api\`, port 4000, depends on postgres
+            - [ ] Define web service building from \`./web\`, port 3000, depends on api
+            - [ ] Define shared Docker network and named volume
+
+            ## Acceptance Criteria
+            - \`docker compose up --build\` starts all three services without errors
+            - Services can communicate by service name over the internal network`,
+              },
+              {
+                title: 'Write database schema and init script',
+                labels: ['database', 'P0-critical'],
+                milestone: 'Phase 2 — Docker & Database',
+                body: `## Description
+            Create \`db/init.sql\` that enables pgvector and creates all four tables with proper constraints and indexes.
+
+            ## Tasks
+            - [ ] Enable pgvector extension
+            - [ ] Create users table (id, email, username, password_hash, created_at)
+            - [ ] Create profiles table (id, user_id, bio, embedding as vector(1536), updated_at)
+            - [ ] Create connections table (id, requester_id, receiver_id, status, created_at)
+            - [ ] Create conversation_starters table (id, user_a_id, user_b_id, starters as JSONB, created_at)
+            - [ ] Add unique constraints on connections pair and starters pair
+            - [ ] Add an index on profiles.embedding for cosine similarity search
+
+            ## Acceptance Criteria
+            - \`SELECT * FROM pg_extension WHERE extname = 'vector'\` returns a row
+            - All four tables exist with correct column types
+            - Unique constraints prevent duplicate connections and duplicate starters
+            - Embedding index exists on the profiles table`,
+              },
+              {
+                title: 'Create Dockerfiles for API and web services',
+                labels: ['devops', 'P0-critical'],
+                milestone: 'Phase 2 — Docker & Database',
+                body: `## Description
+            Write Dockerfiles for the Fastify backend and Next.js frontend.
+
+            ## Tasks
+            - [ ] Create \`api/Dockerfile\` using node:20-alpine, install deps, copy source, expose 4000
+            - [ ] Create \`web/Dockerfile\` using node:20-alpine, install deps, copy source, expose 3000
+            - [ ] Verify both containers build and start cleanly inside Docker Compose
+
+            ## Acceptance Criteria
+            - \`docker compose up --build\` builds both images without errors
+            - API container starts and is reachable on port 4000
+            - Web container starts and is reachable on port 3000`,
+              },
+              {
+                title: 'Verify full Docker Compose environment',
+                labels: ['devops', 'database', 'P0-critical'],
+                milestone: 'Phase 2 — Docker & Database',
+                body: `## Description
+            End-to-end verification that all containers run, communicate, and the database schema is correctly initialized.
+
+            ## Tasks
+            - [ ] Run \`docker compose up --build\` from the project root
+            - [ ] Connect to Postgres and verify all tables and pgvector extension
+            - [ ] Tear down with \`docker compose down\`, bring back up, and confirm volume persistence
+            - [ ] Confirm the API container can reach Postgres by service name
+
+            ## Acceptance Criteria
+            - All three containers start and stay healthy
+            - Database schema survives a restart cycle
+            - No connection errors in API logs when querying Postgres`,
+              },
+              {
+                title: 'Initialize Fastify project with TypeScript',
+                labels: ['backend', 'P0-critical'],
+                milestone: 'Phase 3 — Backend Foundation',
+                body: `## Description
+            Set up the Fastify project structure with TypeScript, linting, and a health-check route.
+
+            ## Tasks
+            - [ ] Run \`npm init\` in \`api/\`, install fastify, @fastify/cors, typescript, ts-node, nodemon
+            - [ ] Create \`tsconfig.json\` with strict mode
+            - [ ] Create \`api/src/index.ts\` with Fastify initialization, CORS config, and \`GET /health\` route
+            - [ ] Configure CORS to accept requests from \`http://localhost:3000\`
+            - [ ] Add \`dev\` and \`build\` scripts to \`package.json\`
+
+            ## Acceptance Criteria
+            - \`GET http://localhost:4000/health\` returns \`{ status: "ok" }\`
+            - TypeScript compiles without errors
+            - CORS headers are present in responses`,
+              },
+              {
+                title: 'Create database connection plugin',
+                labels: ['backend', 'database', 'P0-critical'],
+                milestone: 'Phase 3 — Backend Foundation',
+                body: `## Description
+            Build a Fastify plugin that creates a Postgres connection pool and decorates the Fastify instance.
+
+            ## Tasks
+            - [ ] Install \`pg\` and \`@types/pg\`
+            - [ ] Create \`api/src/plugins/db.ts\` as a Fastify plugin
+            - [ ] Initialize \`pg.Pool\` using \`DATABASE_URL\`
+            - [ ] Decorate Fastify instance with the pool (\`fastify.db\`)
+            - [ ] Add an \`onClose\` hook to shut down the pool gracefully
+            - [ ] Test the connection by running \`SELECT NOW()\` from the health route
+
+            ## Acceptance Criteria
+            - API starts without database connection errors
+            - Health route successfully queries the database
+            - Pool shuts down cleanly on server stop`,
+              },
+              {
+                title: 'Build user registration endpoint',
+                labels: ['backend', 'P0-critical'],
+                milestone: 'Phase 4 — Authentication',
+                body: `## Description
+            Implement \`POST /auth/register\` to create new user accounts with hashed passwords and return a JWT.
+
+            ## Tasks
+            - [ ] Install \`bcrypt\` and \`jsonwebtoken\` with type definitions
+            - [ ] Create \`api/src/routes/auth.ts\`
+            - [ ] Validate request body: email, username, password all required
+            - [ ] Check uniqueness of email and username against the users table
+            - [ ] Hash password with bcrypt (salt rounds: 10)
+            - [ ] Insert user into the database
+            - [ ] Sign a JWT with \`{ userId, email }\`, 7-day expiry, using \`JWT_SECRET\`
+            - [ ] Return the JWT and basic user info
+
+            ## Acceptance Criteria
+            - Successful registration returns 201 with a valid JWT
+            - Duplicate email returns 409
+            - Duplicate username returns 409
+            - Missing fields return 400`,
+              },
+              {
+                title: 'Build user login endpoint',
+                labels: ['backend', 'P0-critical'],
+                milestone: 'Phase 4 — Authentication',
+                body: `## Description
+            Implement \`POST /auth/login\` to authenticate users and return a JWT.
+
+            ## Tasks
+            - [ ] Accept email and password in the request body
+            - [ ] Look up user by email
+            - [ ] Compare password against stored hash with \`bcrypt.compare\`
+            - [ ] On success, sign and return a JWT
+            - [ ] On failure, return 401
+
+            ## Acceptance Criteria
+            - Correct credentials return 200 with a valid JWT
+            - Wrong password returns 401
+            - Non-existent email returns 401
+            - Response does not reveal whether the email exists`,
+              },
+              {
+                title: 'Build JWT authentication middleware',
+                labels: ['backend', 'P0-critical'],
+                milestone: 'Phase 4 — Authentication',
+                body: `## Description
+            Create a Fastify plugin that verifies JWT tokens on all protected routes and attaches user data to the request.
+
+            ## Tasks
+            - [ ] Create \`api/src/plugins/auth.ts\`
+            - [ ] Register an \`onRequest\` hook for routes under \`/api/*\`
+            - [ ] Exclude \`/auth/register\` and \`/auth/login\` from the check
+            - [ ] Extract and verify the \`Authorization: Bearer <token>\` header
+            - [ ] Attach decoded \`{ userId, email }\` to \`request.user\`
+            - [ ] Return 401 for missing, expired, or invalid tokens
+
+            ## Acceptance Criteria
+            - Protected routes return 401 without a token
+            - Protected routes return 401 with an expired or invalid token
+            - Protected routes succeed with a valid token
+            - \`request.user\` contains the correct \`userId\` and \`email\``,
+              },
+              {
+                title: 'Build logout endpoint',
+                labels: ['backend', 'P2-medium'],
+                milestone: 'Phase 4 — Authentication',
+                body: `## Description
+            Implement \`POST /auth/logout\`. Since JWTs are stateless, this is primarily a client-side action, but the endpoint should exist for API completeness.
+
+            ## Tasks
+            - [ ] Create the route at \`POST /auth/logout\` (requires authentication)
+            - [ ] Return a success response
+            - [ ] Optionally implement a server-side token blacklist for true invalidation
+
+            ## Acceptance Criteria
+            - Authenticated request returns 200
+            - Unauthenticated request returns 401`,
+              },
+              {
+                title: 'Create embedding generation service',
+                labels: ['backend', 'ai-integration', 'P0-critical'],
+                milestone: 'Phase 5 — Profile & Embeddings',
+                body: `## Description
+            Build a service module that takes a text string and returns a 1536-dimension embedding vector using the Voyage model via the Anthropic SDK.
+
+            ## Tasks
+            - [ ] Install \`@anthropic-ai/sdk\`
+            - [ ] Create \`api/src/services/embedding.ts\`
+            - [ ] Initialize the Anthropic client with \`ANTHROPIC_API_KEY\`
+            - [ ] Export \`generateEmbedding(text: string): Promise<number[]>\`
+            - [ ] Call Voyage embeddings endpoint with model \`voyage-3\`
+            - [ ] Add error handling for API failures, rate limits, and empty input
+
+            ## Acceptance Criteria
+            - Function returns an array of exactly 1536 numbers for valid input
+            - Empty string input throws a meaningful error
+            - API key errors are caught and logged clearly`,
+              },
+              {
+                title: 'Build create/update profile endpoint',
+                labels: ['backend', 'ai-integration', 'P0-critical'],
+                milestone: 'Phase 5 — Profile & Embeddings',
+                body: `## Description
+            Implement \`POST /profile\` to accept a bio, generate an embedding, and upsert the profile.
+
+            ## Tasks
+            - [ ] Create \`api/src/routes/profile.ts\`
+            - [ ] Validate bio is 50–5000 characters
+            - [ ] Call \`generateEmbedding(bio)\` to get the vector
+            - [ ] Upsert into profiles table (insert if new, update bio + embedding + updated_at if exists)
+            - [ ] Store embedding as JSON-stringified array cast to \`::vector\`
+            - [ ] Return the profile data (without the raw embedding)
+
+            ## Acceptance Criteria
+            - New profile creates a row in the profiles table with a valid embedding
+            - Updating the bio replaces the embedding
+            - Bio under 50 characters returns 400
+            - Bio over 5000 characters returns 400
+            - Response does not include the raw embedding vector`,
+              },
+              {
+                title: 'Build get profile endpoint',
+                labels: ['backend', 'P1-high'],
+                milestone: 'Phase 5 — Profile & Embeddings',
+                body: `## Description
+            Implement \`GET /profile/:id\` to retrieve a user's profile by ID.
+
+            ## Tasks
+            - [ ] Add route to \`api/src/routes/profile.ts\`
+            - [ ] Query profiles joined with users for the given ID
+            - [ ] Return username, bio, and created_at
+            - [ ] Return 404 if the profile doesn't exist
+            - [ ] Do not return the raw embedding vector
+
+            ## Acceptance Criteria
+            - Valid ID returns 200 with username, bio, created_at
+            - Non-existent ID returns 404
+            - Raw embedding is never included in the response`,
+              },
+              {
+                title: 'Build matching endpoint with cosine similarity',
+                labels: ['backend', 'database', 'ai-integration', 'P0-critical'],
+                milestone: 'Phase 6 — Matching Engine',
+                body: `## Description
+            Implement \`GET /matches\` to return the top 10 most similar users based on pgvector cosine similarity.
+
+            ## Tasks
+            - [ ] Create \`api/src/routes/matches.ts\`
+            - [ ] Fetch the current user's embedding from the profiles table
+            - [ ] If no profile exists, return an error directing the user to onboarding
+            - [ ] Run the cosine similarity query: \`1 - (embedding <=> $1::vector) AS score\`
+            - [ ] Exclude the current user from results
+            - [ ] Order by distance ascending, limit 10
+            - [ ] Return username, bio snippet, and score rounded to 2 decimal places
+
+            ## Acceptance Criteria
+            - Returns up to 10 matches sorted by similarity (highest first)
+            - Current user is excluded from their own results
+            - Scores are between 0 and 1, rounded to 2 decimal places
+            - User with no profile gets a clear error message
+            - User with a profile but no other users in the system gets an empty array`,
+              },
+              {
+                title: 'Create seed data script for testing matches',
+                labels: ['backend', 'database', 'P1-high'],
+                milestone: 'Phase 6 — Matching Engine',
+                body: `## Description
+            Create a script or Postman collection that registers 8–10 test users with diverse bios and generates their embeddings.
+
+            ## Tasks
+            - [ ] Write a seed script (Node.js or shell) that calls the register and profile endpoints
+            - [ ] Include at least 8 diverse bios covering different interest clusters
+            - [ ] Bios should include some that are obviously related (for validating scores) and some that are distinct
+            - [ ] Document how to run the seed script in the README
+
+            ## Acceptance Criteria
+            - Running the script creates 8+ users with populated embeddings
+            - \`GET /matches\` for any seeded user returns intuitively sensible similarity rankings
+            - Script is idempotent or can be re-run after wiping the database`,
+              },
+              {
+                title: 'Create conversation starters generation service',
+                labels: ['backend', 'ai-integration', 'P0-critical'],
+                milestone: 'Phase 7 — Conversation Starters',
+                body: `## Description
+            Build a service that takes two user bios and calls Claude to generate 3 personalized conversation starters.
+
+            ## Tasks
+            - [ ] Create \`api/src/services/starters.ts\`
+            - [ ] Export \`generateStarters(bioA: string, bioB: string): Promise<string[]>\`
+            - [ ] Build a prompt providing both bios and instructing Claude to return a JSON array of 3 starters
+            - [ ] Parse the response and validate it contains exactly 3 strings
+            - [ ] Add error handling and a fallback for malformed Claude output
+
+            ## Acceptance Criteria
+            - Returns an array of exactly 3 strings
+            - Starters reference specific interests from both bios (not generic)
+            - Malformed Claude output is caught and triggers a retry or fallback`,
+              },
+              {
+                title: 'Build conversation starters endpoint with caching',
+                labels: ['backend', 'ai-integration', 'P1-high'],
+                milestone: 'Phase 7 — Conversation Starters',
+                body: `## Description
+            Implement \`GET /matches/:id/starters\` that checks for cached starters before calling Claude.
+
+            ## Tasks
+            - [ ] Add route to \`api/src/routes/matches.ts\`
+            - [ ] Normalize the user pair by always storing the smaller UUID as \`user_a_id\`
+            - [ ] Check \`conversation_starters\` table for existing entry
+            - [ ] If cached, return immediately
+            - [ ] If not cached, fetch both bios, call \`generateStarters\`, insert into table, return result
+
+            ## Acceptance Criteria
+            - First request generates starters and returns them
+            - Second request for the same pair returns cached starters without calling Claude
+            - Pair order normalization works (A→B and B→A return the same cached result)
+            - Non-existent match ID returns 404`,
+              },
+            ];
+
+            for (const issue of issues) {
+              try {
+                const res = await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: issue.title,
+                  body: issue.body,
+                  labels: issue.labels,
+                  milestone: milestoneIds[issue.milestone],
+                });
+                console.log(`Created issue #${res.data.number}: ${issue.title}`);
+              } catch (e) {
+                console.error(`Failed to create issue "${issue.title}": ${e.message}`);
+                throw e;
+              }
+            }
