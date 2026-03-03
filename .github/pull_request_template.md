@@ -1,9 +1,10 @@
 ## What does this PR do?
 
-Adds Dockerfiles for the `api` (Fastify) and `web` (Next.js) services, completing the Docker infrastructure for local development.
+Adds minimal `package.json` files for the `api` and `web` services so that Docker can build the containers and `docker compose up` runs successfully.
 
 ## Related Issue
-<!-- e.g. Closes #3 -->
+
+Closes #5
 
 ## Type of change
 
@@ -20,9 +21,9 @@ Adds Dockerfiles for the `api` (Fastify) and `web` (Next.js) services, completin
 
 ## Code Review Notes
 
-- Both Dockerfiles use `npm run dev` — suitable for development. Switch to `npm run build && npm start` for production.
-- No `.dockerignore` files yet — consider adding them to exclude `node_modules/`, `.env`, etc. from the build context for faster builds.
+- Both `package.json` files are boilerplate from `npm init` — dependencies and scripts will be added as the api and web services are built out in later phases.
+- `docker compose up` confirmed working locally.
 
 ## Summary (AI generated)
 
-This branch adds two Dockerfiles that complete the container setup referenced by `docker-compose.yml`. Both use `node:20-alpine` as the base image, follow Docker layer caching best practices (`COPY package*.json` + `npm install` before `COPY . .`), and expose the correct ports (`4000` for api, `3000` for web). Both are configured for development with `npm run dev`.
+This branch adds the initial `package.json` files for both the `api` and `web` services, enabling Docker to build the containers referenced in `docker-compose.yml`. The full stack (`postgres`, `api`, `web`) now spins up successfully with `docker compose up`.
