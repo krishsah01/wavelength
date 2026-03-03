@@ -3,7 +3,8 @@
 Sets up the Fastify API with TypeScript, a PostgreSQL database plugin, CORS support, and a `/health` endpoint. Switches the module system from ESM to CommonJS to resolve `ts-node` compatibility issues in Docker.
 
 ## Related Issue
-<!-- e.g. Closes #3 -->
+
+Closes #5
 
 ## Type of change
 
