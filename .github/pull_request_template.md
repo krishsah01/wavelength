@@ -1,6 +1,6 @@
 ## What does this PR do?
 
-Sets up Docker infrastructure for the Wavelength project: Postgres with pgvector, plus scaffolded service definitions for the `api` (Fastify) and `web` (Next.js) containers. Adds `.env.example` for environment variable documentation, `.gitignore` entry for `.env`, and a PR template.
+Adds the database schema initialization script (`db/init.sql`) for the Wavelength project. Creates all four tables (`users`, `profiles`, `connections`, `conversation_starters`) with pgvector support, unique constraints, and an HNSW index for cosine similarity search on profile embeddings. Updates `docker-compose.yml` to mount the init script so the schema auto-runs on first boot.
 
 ## Related Issue
 <!-- e.g. Closes #3 -->
@@ -20,10 +20,12 @@ Sets up Docker infrastructure for the Wavelength project: Postgres with pgvector
 
 ## Code Review Notes
 
-- `api` and `web` Dockerfiles (`./api`, `./web`) don't exist yet — expected, as those phases come next.
-- `NEXT_PUBLIC_API_URL` is hardcoded to `http://api:4000` in the `web` service — works inside Docker networking but would need overriding for local dev outside Docker.
-- The build guide markdown is committed to the repo root with a long filename — may want to move to `docs/build-guide.md` in a future cleanup.
+- `profiles.user_id` has a `UNIQUE` constraint enforcing a one-to-one relationship with `users`
+- `connections` has a `UNIQUE (requester_id, receiver_id)` to prevent duplicate requests
+- `conversation_starters` has a `UNIQUE (user_a_id, user_b_id)` so starters are only generated once per pair
+- An HNSW index is used on `profiles.embedding` with `vector_cosine_ops` for fast similarity search
+- The init script is mounted via `docker-compose.yml` into `/docker-entrypoint-initdb.d/` — it only runs on the first `docker compose up` (fresh volume)
 
 ## Summary (AI generated)
 
-This branch introduces the foundational Docker and database infrastructure for Wavelength. The `docker-compose.yml` defines three services — `postgres` (pgvector/pg16), `api` (Fastify), and `web` (Next.js) — with environment variable substitution from `.env`. A `.env.example` template lists all required vars including `NEXTAUTH_SECRET`. The `.gitignore` is updated to exclude `.env`. A PR template and comprehensive build guide document are also included.
+This branch adds the database layer for Wavelength. The `db/init.sql` script enables the pgvector extension and creates four tables: `users` (auth), `profiles` (bios + 1536-dim embeddings), `connections` (friend requests), and `conversation_starters` (AI-generated icebreakers). All tables use UUID primary keys. Unique constraints prevent duplicate connections and conversation starter pairs. An HNSW index on `profiles.embedding` enables efficient cosine similarity matching. The `docker-compose.yml` is updated to mount the init script so Postgres auto-initializes on first boot.
