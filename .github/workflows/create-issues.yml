@@ -25,6 +25,7 @@ jobs:
               { name: 'backend',        color: 'e4e669', description: 'Backend API work' },
               { name: 'database',       color: 'd93f0b', description: 'Database tasks' },
               { name: 'ai-integration', color: '0e8a16', description: 'AI and ML integration' },
+              { name: 'frontend',       color: '7057ff', description: 'Frontend UI work' },
               { name: 'P0-critical',    color: 'b60205', description: 'Critical priority' },
               { name: 'P1-high',        color: 'ff9500', description: 'High priority' },
               { name: 'P2-medium',      color: 'fbca04', description: 'Medium priority' },
@@ -58,6 +59,15 @@ jobs:
               'Phase 5 — Profile & Embeddings',
               'Phase 6 — Matching Engine',
               'Phase 7 — Conversation Starters',
+              'Phase 8 — Frontend Auth',
+              'Phase 9 — Dashboard',
+              'Phase 10 — Profile & Starters',
+              'Phase 11 — Connections',
+              'Phase 12 — Settings',
+              'Phase 13 — Polish',
+              'Phase 14 — Polish',
+              'Phase 15 — Deployment',
+              'Phase 16 — Launch',
             ];
             const ids = {};
             for (const title of milestones) {
@@ -434,6 +444,527 @@ jobs:
             - Second request for the same pair returns cached starters without calling Claude
             - Pair order normalization works (A→B and B→A return the same cached result)
             - Non-existent match ID returns 404`,
+              },
+              // Phase 8 — Frontend Auth
+              {
+                title: 'Initialize Next.js project with App Router and Tailwind',
+                labels: ['frontend', 'P0-critical'],
+                milestone: 'Phase 8 — Frontend Auth',
+                body: `## Description
+            Set up the Next.js frontend with TypeScript, App Router, and Tailwind CSS.
+
+            ## Tasks
+            - [ ] Run \`create-next-app\` inside \`web/\` with TypeScript, App Router, Tailwind, and ESLint
+            - [ ] Install next-auth and any HTTP client dependencies
+            - [ ] Verify the dev server starts and renders the default page
+            - [ ] Verify the container builds and runs inside Docker Compose
+
+            ## Acceptance Criteria
+            - \`http://localhost:3000\` renders without errors
+            - Tailwind classes are applied correctly
+            - TypeScript compiles cleanly`,
+              },
+              {
+                title: 'Create shared API client with auth headers',
+                labels: ['frontend', 'P0-critical'],
+                milestone: 'Phase 8 — Frontend Auth',
+                body: `## Description
+            Build a reusable API client module that attaches the JWT to all backend requests and handles 401 redirects.
+
+            ## Tasks
+            - [ ] Create \`web/lib/api.ts\`
+            - [ ] Configure base URL from \`NEXT_PUBLIC_API_URL\`
+            - [ ] Attach JWT from session to \`Authorization\` header on every request
+            - [ ] Add response handling that redirects to \`/login\` on 401
+
+            ## Acceptance Criteria
+            - All API calls include the JWT header when the user is logged in
+            - 401 responses redirect to the login page
+            - Base URL is configurable via environment variable`,
+              },
+              {
+                title: 'Configure NextAuth.js with credentials provider',
+                labels: ['frontend', 'P0-critical'],
+                milestone: 'Phase 8 — Frontend Auth',
+                body: `## Description
+            Set up NextAuth.js to authenticate against the Fastify backend and store the JWT in the session.
+
+            ## Tasks
+            - [ ] Create route handler at \`web/app/api/auth/[...nextauth]/route.ts\`
+            - [ ] Configure a Credentials provider that calls \`POST /auth/login\` on the Fastify API
+            - [ ] Store the returned JWT in the NextAuth session
+            - [ ] Set session strategy to \`jwt\`
+            - [ ] Configure \`NEXTAUTH_SECRET\`
+
+            ## Acceptance Criteria
+            - \`signIn("credentials", ...)\` successfully authenticates against the backend
+            - JWT is accessible from the session on both client and server
+            - Invalid credentials surface an error to the UI`,
+              },
+              {
+                title: 'Build landing page',
+                labels: ['frontend', 'P1-high'],
+                milestone: 'Phase 8 — Frontend Auth',
+                body: `## Description
+            Create the landing page at \`/\` with hero section, tagline, and sign-up CTA.
+
+            ## Tasks
+            - [ ] Build a hero section with the project name "Wavelength"
+            - [ ] Add a tagline that communicates the value proposition
+            - [ ] Add a primary CTA button linking to \`/register\`
+            - [ ] Add a secondary link to \`/login\`
+            - [ ] Style it cleanly — this is a portfolio piece
+
+            ## Acceptance Criteria
+            - Page renders at \`/\` with no errors
+            - CTA navigates to \`/register\`
+            - Login link navigates to \`/login\`
+            - Design is visually appealing and responsive`,
+              },
+              {
+                title: 'Build registration page',
+                labels: ['frontend', 'P0-critical'],
+                milestone: 'Phase 8 — Frontend Auth',
+                body: `## Description
+            Create the registration form at \`/register\` with client-side validation.
+
+            ## Tasks
+            - [ ] Build form with fields: email, username, password, confirm password
+            - [ ] Validate: email format, username min 3 chars, password min 8 chars, passwords match
+            - [ ] On submit, call \`POST /auth/register\`
+            - [ ] On success, store JWT via NextAuth and redirect to \`/onboarding\`
+            - [ ] On error, display inline error messages
+            - [ ] Include a link to \`/login\` for existing users
+
+            ## Acceptance Criteria
+            - Validation errors display before submission
+            - Successful registration redirects to \`/onboarding\`
+            - Duplicate email/username errors display inline
+            - Form is accessible and usable on mobile`,
+              },
+              {
+                title: 'Build login page',
+                labels: ['frontend', 'P0-critical'],
+                milestone: 'Phase 8 — Frontend Auth',
+                body: `## Description
+            Create the login form at \`/login\`.
+
+            ## Tasks
+            - [ ] Build form with fields: email, password
+            - [ ] On submit, call \`NextAuth signIn("credentials", ...)\`
+            - [ ] On success, redirect to \`/dashboard\`
+            - [ ] On error, display "Invalid email or password"
+            - [ ] Include a link to \`/register\` for new users
+
+            ## Acceptance Criteria
+            - Successful login redirects to \`/dashboard\`
+            - Failed login shows error message
+            - Link to registration works`,
+              },
+              {
+                title: 'Build onboarding page',
+                labels: ['frontend', 'ai-integration', 'P0-critical'],
+                milestone: 'Phase 8 — Frontend Auth',
+                body: `## Description
+            Create the onboarding page at \`/onboarding\` where users write their interest description.
+
+            ## Tasks
+            - [ ] Build a large freeform text area with a prompt encouraging natural writing
+            - [ ] Add placeholder text as an example (not pre-filled)
+            - [ ] Add a live character counter (min 50, max 5000)
+            - [ ] On submit, call \`POST /profile\`
+            - [ ] Show a loading state while the embedding generates
+            - [ ] On success, redirect to \`/dashboard\`
+
+            ## Acceptance Criteria
+            - Text area enforces 50–5000 character limits
+            - Character counter updates in real time
+            - Loading state displays during embedding generation
+            - Successful submission redirects to dashboard
+            - User is prompted helpfully (not just "enter bio")`,
+              },
+              // Phase 9 — Dashboard
+              {
+                title: 'Build dashboard page with match cards',
+                labels: ['frontend', 'P0-critical'],
+                milestone: 'Phase 9 — Dashboard',
+                body: `## Description
+            Create the dashboard at \`/dashboard\` that fetches and displays the user's top matches.
+
+            ## Tasks
+            - [ ] On load, call \`GET /matches\`
+            - [ ] If user has no profile, redirect to \`/onboarding\`
+            - [ ] Display match cards sorted by similarity score (highest first)
+            - [ ] Each card shows: username (links to profile), bio snippet (150 chars), compatibility percentage
+            - [ ] Add visual score indicators (color or bar) for high/good/moderate matches
+            - [ ] Handle empty state: "No matches yet" message
+            - [ ] Handle loading state: skeleton loaders or spinner
+            - [ ] Handle API errors with retry option
+
+            ## Acceptance Criteria
+            - Matches display in correct order
+            - Cards link to individual profiles
+            - Scores display as percentages
+            - Empty, loading, and error states all render appropriately
+            - Unauthenticated users are redirected to login`,
+              },
+              // Phase 10 — Profile & Starters UI
+              {
+                title: 'Build profile view page',
+                labels: ['frontend', 'P1-high'],
+                milestone: 'Phase 10 — Profile & Starters',
+                body: `## Description
+            Create the profile page at \`/profile/:id\` showing user details and conversation starters.
+
+            ## Tasks
+            - [ ] On load, call \`GET /profile/:id\`
+            - [ ] Display username, full bio, and join date
+            - [ ] If viewing another user's profile, show conversation starters section and Connect button
+            - [ ] If viewing own profile, show an "Edit Profile" link to \`/settings\`
+            - [ ] Handle 404 for non-existent profiles
+
+            ## Acceptance Criteria
+            - Profile data renders correctly
+            - Own profile shows edit link, not connect button
+            - Other profiles show starters and connect button
+            - Non-existent profile shows 404 state`,
+              },
+              {
+                title: 'Build conversation starters display',
+                labels: ['frontend', 'ai-integration', 'P1-high'],
+                milestone: 'Phase 10 — Profile & Starters',
+                body: `## Description
+            Fetch and display AI-generated conversation starters on the profile page.
+
+            ## Tasks
+            - [ ] On profile load (other users only), call \`GET /matches/:id/starters\`
+            - [ ] Display 3 starters in visually distinct cards
+            - [ ] Add a label: "AI-suggested conversation starters based on your shared interests"
+            - [ ] Show loading state during generation (first request may be slow)
+            - [ ] Show a fallback message with retry button on failure
+
+            ## Acceptance Criteria
+            - Three starters render with clear visual separation
+            - Loading state displays while starters are fetched/generated
+            - Cached starters load quickly on subsequent visits
+            - Failures show a retry option`,
+              },
+              {
+                title: 'Build connect button with state management',
+                labels: ['frontend', 'P1-high'],
+                milestone: 'Phase 10 — Profile & Starters',
+                body: `## Description
+            Add a Connect button to the profile page that reflects the current connection state.
+
+            ## Tasks
+            - [ ] Display "Connect" if no connection exists
+            - [ ] Display "Request Sent" (disabled) if current user already sent a request
+            - [ ] Display "Accept Connection" if the other user sent a pending request
+            - [ ] Display "Connected" with a checkmark if already connected
+            - [ ] On click, call the appropriate backend endpoint
+
+            ## Acceptance Criteria
+            - Button state accurately reflects the connection status
+            - Clicking Connect sends a request and updates the button
+            - Clicking Accept accepts the request and updates the button`,
+              },
+              // Phase 11 — Connections
+              {
+                title: 'Build connection request and accept endpoints',
+                labels: ['backend', 'P1-high'],
+                milestone: 'Phase 11 — Connections',
+                body: `## Description
+            Implement backend routes for sending and accepting connection requests.
+
+            ## Tasks
+            - [ ] Create \`api/src/routes/connections.ts\`
+            - [ ] \`POST /connections/:id/request\` — verify target exists, check for duplicates, insert as pending
+            - [ ] \`POST /connections/:id/accept\` — find pending request where current user is receiver, update to accepted
+            - [ ] \`GET /connections\` — return accepted connections with user details, plus pending incoming requests
+
+            ## Acceptance Criteria
+            - Connection request creates a pending row
+            - Duplicate requests are rejected
+            - Only the receiver can accept a request
+            - GET returns both accepted connections and pending incoming requests`,
+              },
+              {
+                title: 'Build connections page',
+                labels: ['frontend', 'P1-high'],
+                milestone: 'Phase 11 — Connections',
+                body: `## Description
+            Create the connections page at \`/connections\` showing pending requests and accepted connections.
+
+            ## Tasks
+            - [ ] Split page into two sections: Pending Requests and Your Connections
+            - [ ] Pending section shows Accept/Decline buttons
+            - [ ] Connections section shows cards with username, bio snippet, and link to profile
+            - [ ] Hide pending section if empty
+            - [ ] Show friendly empty state if no connections
+
+            ## Acceptance Criteria
+            - Pending requests show with action buttons
+            - Accepting a request moves it to the connections section
+            - Empty states display appropriate messages
+            - All user links navigate to the correct profile`,
+              },
+              // Phase 12 — Settings
+              {
+                title: 'Build settings page with bio editing',
+                labels: ['frontend', 'P1-high'],
+                milestone: 'Phase 12 — Settings',
+                body: `## Description
+            Create the settings page at \`/settings\` where users can edit their bio and trigger re-embedding.
+
+            ## Tasks
+            - [ ] Display current bio in an editable text area
+            - [ ] On save, call \`POST /profile\` with the updated bio
+            - [ ] Show loading state during re-embedding
+            - [ ] Redirect to \`/dashboard\` after save so user sees updated matches
+
+            ## Acceptance Criteria
+            - Current bio pre-fills the text area
+            - Save triggers a re-embedding on the backend
+            - Loading state displays during the process
+            - User sees updated matches after saving`,
+              },
+              // Phase 13 — Error Handling & Validation
+              {
+                title: 'Add request validation to all backend routes',
+                labels: ['backend', 'P1-high'],
+                milestone: 'Phase 13 — Polish',
+                body: `## Description
+            Add input validation to every Fastify route using JSON schema or Zod.
+
+            ## Tasks
+            - [ ] Validate email format on auth routes
+            - [ ] Validate bio length (50–5000) on profile routes
+            - [ ] Validate UUID format on all \`:id\` parameters
+            - [ ] Return consistent error shapes: \`{ error: string, statusCode: number }\`
+
+            ## Acceptance Criteria
+            - Invalid inputs return 400 with descriptive error messages
+            - Error response format is consistent across all routes
+            - No unvalidated user input reaches the database`,
+              },
+              {
+                title: 'Add frontend error handling and form validation',
+                labels: ['frontend', 'P1-high'],
+                milestone: 'Phase 13 — Polish',
+                body: `## Description
+            Add comprehensive error handling and validation to all frontend pages.
+
+            ## Tasks
+            - [ ] Wrap all API calls in try/catch
+            - [ ] Display user-friendly error messages (not raw API errors)
+            - [ ] Add React error boundaries
+            - [ ] Handle network errors with retry prompts
+            - [ ] Validate all form inputs client-side before submission
+
+            ## Acceptance Criteria
+            - No unhandled promise rejections in the console
+            - All error states show user-friendly messages
+            - Network failures prompt the user to retry
+            - Form validation prevents invalid submissions`,
+              },
+              {
+                title: 'Add API rate limiting',
+                labels: ['backend', 'P2-medium'],
+                milestone: 'Phase 13 — Polish',
+                body: `## Description
+            Add rate limiting to protect against abuse and control Claude API costs.
+
+            ## Tasks
+            - [ ] Install \`@fastify/rate-limit\`
+            - [ ] Apply global limit: 100 requests/minute per IP
+            - [ ] Apply stricter limits to Claude-dependent routes:
+              - \`POST /profile\`: 10 per hour
+              - \`GET /matches/:id/starters\`: 30 per hour
+            - [ ] Return 429 with a clear message when limits are hit
+
+            ## Acceptance Criteria
+            - Exceeding limits returns 429
+            - Claude API routes have stricter limits than general routes
+            - Rate limit headers are included in responses`,
+              },
+              // Phase 14 — Responsive Design & Polish
+              {
+                title: 'Make all pages responsive',
+                labels: ['frontend', 'P1-high'],
+                milestone: 'Phase 14 — Polish',
+                body: `## Description
+            Ensure every page works well on mobile (375px), tablet (768px), and desktop (1280px).
+
+            ## Tasks
+            - [ ] Test and fix layouts at all three breakpoints
+            - [ ] Add mobile navigation (hamburger menu or bottom nav)
+            - [ ] Stack match cards vertically on mobile, grid on desktop
+            - [ ] Ensure text area on onboarding/settings is comfortable on mobile
+            - [ ] Verify all tap targets are at least 44x44px
+
+            ## Acceptance Criteria
+            - No horizontal scrolling at any breakpoint
+            - Navigation is usable on mobile
+            - All interactive elements are easily tappable
+            - Content is readable without zooming`,
+              },
+              {
+                title: 'Visual polish and design consistency',
+                labels: ['frontend', 'P2-medium'],
+                milestone: 'Phase 14 — Polish',
+                body: `## Description
+            Apply a consistent design language across all pages and add finishing touches.
+
+            ## Tasks
+            - [ ] Establish and apply a consistent color palette
+            - [ ] Add transitions/animations (card fade-in, score bar fill)
+            - [ ] Ensure WCAG AA color contrast compliance
+            - [ ] Add favicon and meta tags (title, description, Open Graph)
+            - [ ] Style loading and empty states intentionally
+
+            ## Acceptance Criteria
+            - Consistent look and feel across all pages
+            - Animations are subtle and purposeful
+            - Color contrast passes WCAG AA
+            - Page has proper meta tags for sharing`,
+              },
+              {
+                title: 'End-to-end QA testing',
+                labels: ['frontend', 'backend', 'P1-high'],
+                milestone: 'Phase 14 — Polish',
+                body: `## Description
+            Walk through every user flow and verify the entire application works correctly.
+
+            ## Tasks
+            - [ ] Test new user flow: Landing → Register → Onboarding → Dashboard → Profile → Connect
+            - [ ] Test returning user flow: Login → Dashboard → Settings → Updated matches
+            - [ ] Test connections flow: Send request → Accept → View connections
+            - [ ] Test with multiple browser tabs simulating different users
+            - [ ] Check for console errors on every page
+            - [ ] Verify no sensitive data leaks in frontend source or network requests
+            - [ ] Test graceful degradation when Claude API is unreachable
+
+            ## Acceptance Criteria
+            - All flows complete without errors
+            - No console errors on any page
+            - No API keys or JWTs exposed in client-side code
+            - Application degrades gracefully on API failure`,
+              },
+              // Phase 15 — Deployment
+              {
+                title: 'Deploy PostgreSQL to Railway',
+                labels: ['devops', 'database', 'P0-critical'],
+                milestone: 'Phase 15 — Deployment',
+                body: `## Description
+            Provision and configure the production database on Railway.
+
+            ## Tasks
+            - [ ] Create a Railway account and link the GitHub repo
+            - [ ] Provision a managed PostgreSQL instance
+            - [ ] Run \`init.sql\` against the production database
+            - [ ] Verify pgvector extension and all tables exist
+            - [ ] Note the production connection string
+
+            ## Acceptance Criteria
+            - Production database is running with the complete schema
+            - pgvector extension is enabled
+            - Connection string is saved as a Railway environment variable`,
+              },
+              {
+                title: 'Deploy Fastify API to Railway',
+                labels: ['devops', 'backend', 'P0-critical'],
+                milestone: 'Phase 15 — Deployment',
+                body: `## Description
+            Deploy the backend API service to Railway.
+
+            ## Tasks
+            - [ ] Create a Railway service pointing to the \`api/\` directory
+            - [ ] Set environment variables: \`DATABASE_URL\`, \`ANTHROPIC_API_KEY\`, \`JWT_SECRET\`
+            - [ ] Deploy and verify the health check endpoint is reachable
+            - [ ] Verify the API can connect to the production database
+
+            ## Acceptance Criteria
+            - \`GET /health\` returns 200 on the production URL
+            - API connects to the production database without errors
+            - Environment variables are set and not exposed`,
+              },
+              {
+                title: 'Deploy Next.js frontend to Railway',
+                labels: ['devops', 'frontend', 'P0-critical'],
+                milestone: 'Phase 15 — Deployment',
+                body: `## Description
+            Deploy the frontend to Railway.
+
+            ## Tasks
+            - [ ] Create a Railway service pointing to the \`web/\` directory
+            - [ ] Set environment variables: \`NEXT_PUBLIC_API_URL\`, \`NEXTAUTH_SECRET\`
+            - [ ] Deploy and verify the landing page loads
+            - [ ] Verify CORS is configured correctly between frontend and API domains
+
+            ## Acceptance Criteria
+            - Landing page loads on the production URL
+            - Frontend can communicate with the API (no CORS errors)
+            - Auth flow works end-to-end in production`,
+              },
+              {
+                title: 'Production smoke test',
+                labels: ['devops', 'P0-critical'],
+                milestone: 'Phase 15 — Deployment',
+                body: `## Description
+            Run through the complete application flow on the production deployment.
+
+            ## Tasks
+            - [ ] Register a new account
+            - [ ] Complete onboarding with a bio
+            - [ ] View matches and conversation starters
+            - [ ] Send and accept a connection request
+            - [ ] Edit bio in settings and verify matches update
+            - [ ] Monitor Railway logs for errors
+
+            ## Acceptance Criteria
+            - Every feature works identically to local development
+            - No errors in production logs
+            - Claude API calls succeed from the production server`,
+              },
+              // Phase 16 — Documentation & Launch
+              {
+                title: 'Write comprehensive README',
+                labels: ['devops', 'P1-high'],
+                milestone: 'Phase 16 — Launch',
+                body: `## Description
+            Write the project README for portfolio presentation.
+
+            ## Tasks
+            - [ ] Add project description and motivation
+            - [ ] Add screenshots or GIF of the app in action
+            - [ ] Document the tech stack and architecture
+            - [ ] Write "Getting Started" instructions for local development with Docker Compose
+            - [ ] Add environment variable reference
+            - [ ] Link to the live deployment
+            - [ ] Add the production URL to the repo description
+
+            ## Acceptance Criteria
+            - A new developer can clone the repo and run it locally by following the README
+            - README includes visuals of the working application
+            - Live deployment link is prominent`,
+              },
+              {
+                title: 'Tag v1.0 release',
+                labels: ['devops', 'P2-medium'],
+                milestone: 'Phase 16 — Launch',
+                body: `## Description
+            Create the first official release.
+
+            ## Tasks
+            - [ ] Ensure all issues are closed and the main branch is stable
+            - [ ] Tag the release as \`v1.0.0\` on GitHub
+            - [ ] Write release notes summarizing what's included
+            - [ ] Pin the repository on your GitHub profile
+
+            ## Acceptance Criteria
+            - Release tag exists on GitHub
+            - Release notes are written
+            - Repo is pinned on profile`,
               },
             ];
 
