@@ -1,6 +1,6 @@
 ## What does this PR do?
 
-Adds the database schema initialization script (`db/init.sql`) for the Wavelength project. Creates all four tables (`users`, `profiles`, `connections`, `conversation_starters`) with pgvector support, unique constraints, and an HNSW index for cosine similarity search on profile embeddings. Updates `docker-compose.yml` to mount the init script so the schema auto-runs on first boot.
+Adds Dockerfiles for the `api` (Fastify) and `web` (Next.js) services, completing the Docker infrastructure for local development.
 
 ## Related Issue
 <!-- e.g. Closes #3 -->
@@ -20,12 +20,9 @@ Adds the database schema initialization script (`db/init.sql`) for the Wavelengt
 
 ## Code Review Notes
 
-- `profiles.user_id` has a `UNIQUE` constraint enforcing a one-to-one relationship with `users`
-- `connections` has a `UNIQUE (requester_id, receiver_id)` to prevent duplicate requests
-- `conversation_starters` has a `UNIQUE (user_a_id, user_b_id)` so starters are only generated once per pair
-- An HNSW index is used on `profiles.embedding` with `vector_cosine_ops` for fast similarity search
-- The init script is mounted via `docker-compose.yml` into `/docker-entrypoint-initdb.d/` — it only runs on the first `docker compose up` (fresh volume)
+- Both Dockerfiles use `npm run dev` — suitable for development. Switch to `npm run build && npm start` for production.
+- No `.dockerignore` files yet — consider adding them to exclude `node_modules/`, `.env`, etc. from the build context for faster builds.
 
 ## Summary (AI generated)
 
-This branch adds the database layer for Wavelength. The `db/init.sql` script enables the pgvector extension and creates four tables: `users` (auth), `profiles` (bios + 1536-dim embeddings), `connections` (friend requests), and `conversation_starters` (AI-generated icebreakers). All tables use UUID primary keys. Unique constraints prevent duplicate connections and conversation starter pairs. An HNSW index on `profiles.embedding` enables efficient cosine similarity matching. The `docker-compose.yml` is updated to mount the init script so Postgres auto-initializes on first boot.
+This branch adds two Dockerfiles that complete the container setup referenced by `docker-compose.yml`. Both use `node:20-alpine` as the base image, follow Docker layer caching best practices (`COPY package*.json` + `npm install` before `COPY . .`), and expose the correct ports (`4000` for api, `3000` for web). Both are configured for development with `npm run dev`.
