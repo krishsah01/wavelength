@@ -1,6 +1,6 @@
 ## What does this PR do?
 
-Sets up the Fastify API with TypeScript, a PostgreSQL database plugin, CORS support, and a `/health` endpoint. Switches the module system from ESM to CommonJS to resolve `ts-node` compatibility issues in Docker.
+Sets up the Fastify API with TypeScript, a PostgreSQL database plugin, CORS support, and a `/health` endpoint. Switches the module system from ESM to CommonJS to resolve `ts-node` compatibility issues in Docker
 
 ## Related Issue
 
