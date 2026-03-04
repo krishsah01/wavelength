@@ -1,6 +1,6 @@
 ## What does this PR do?
 
-Adds minimal `package.json` files for the `api` and `web` services so that Docker can build the containers and `docker compose up` runs successfully.
+Sets up the Fastify API with TypeScript, a PostgreSQL database plugin, CORS support, and a `/health` endpoint. Switches the module system from ESM to CommonJS to resolve `ts-node` compatibility issues in Docker
 
 ## Related Issue
 
@@ -8,10 +8,10 @@ Closes #5
 
 ## Type of change
 
-- [ ] New feature
+- [x] New feature
 - [ ] Bug fix
 - [ ] Refactor
-- [x] DevOps / config
+- [ ] DevOps / config
 
 ## Checklist
 
@@ -21,9 +21,13 @@ Closes #5
 
 ## Code Review Notes
 
-- Both `package.json` files are boilerplate from `npm init` — dependencies and scripts will be added as the api and web services are built out in later phases.
-- `docker compose up` confirmed working locally.
+- `tsconfig.json` uses `module: "commonjs"` and `moduleResolution: "node"` — this was necessary because `ts-node --esm` does not support `.ts` file extensions in Node's ESM loader. CommonJS avoids this entirely and is the standard choice for `ts-node` setups.
+- `"type": "module"` was removed from `package.json` for the same reason — it conflicts with CommonJS `ts-node` execution.
+- Imports in `index.ts` use bare specifiers (`./plugins/db` not `./plugins/db.js`) which is correct for CommonJS.
+- `db.ts` uses `pg`'s default export with destructured `Pool` (`import pg from 'pg'; const { Pool } = pg`) — this is required because `pg` is a CommonJS module and `esModuleInterop: true` is enabled.
+- `@types/pg` was added as a devDependency to resolve TypeScript's implicit `any` type error on the `pg` import.
+- The `DATABASE_URL` env var is read from `process.env` — ensure it is set in the Docker environment (via `docker-compose.yml`).
 
 ## Summary (AI generated)
 
-This branch adds the initial `package.json` files for both the `api` and `web` services, enabling Docker to build the containers referenced in `docker-compose.yml`. The full stack (`postgres`, `api`, `web`) now spins up successfully with `docker compose up`.
+This branch bootstraps the Fastify API service. It introduces `src/index.ts` as the entry point, which wires up CORS (restricted to `http://localhost:3000`), a PostgreSQL database plugin, and a `/health` route returning `{ status: "ok" }`. The database plugin (`src/plugins/db.ts`) uses `fastify-plugin` to ensure the decorated `db` pool is available across the whole app. The module system was intentionally switched from ESM to CommonJS to be compatible with `ts-node` in the Docker dev environment.
