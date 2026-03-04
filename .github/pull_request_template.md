@@ -1,16 +1,16 @@
 ## What does this PR do?
 
-Adds Dockerfiles for the `api` (Fastify) and `web` (Next.js) services, completing the Docker infrastructure for local development.
+Sets up the Fastify API with TypeScript, a PostgreSQL database plugin, CORS support, and a `/health` endpoint. Switches the module system from ESM to CommonJS to resolve `ts-node` compatibility issues in Docker.
 
 ## Related Issue
 <!-- e.g. Closes #3 -->
 
 ## Type of change
 
-- [ ] New feature
+- [x] New feature
 - [ ] Bug fix
 - [ ] Refactor
-- [x] DevOps / config
+- [ ] DevOps / config
 
 ## Checklist
 
@@ -20,9 +20,13 @@ Adds Dockerfiles for the `api` (Fastify) and `web` (Next.js) services, completin
 
 ## Code Review Notes
 
-- Both Dockerfiles use `npm run dev` — suitable for development. Switch to `npm run build && npm start` for production.
-- No `.dockerignore` files yet — consider adding them to exclude `node_modules/`, `.env`, etc. from the build context for faster builds.
+- `tsconfig.json` uses `module: "commonjs"` and `moduleResolution: "node"` — this was necessary because `ts-node --esm` does not support `.ts` file extensions in Node's ESM loader. CommonJS avoids this entirely and is the standard choice for `ts-node` setups.
+- `"type": "module"` was removed from `package.json` for the same reason — it conflicts with CommonJS `ts-node` execution.
+- Imports in `index.ts` use bare specifiers (`./plugins/db` not `./plugins/db.js`) which is correct for CommonJS.
+- `db.ts` uses `pg`'s default export with destructured `Pool` (`import pg from 'pg'; const { Pool } = pg`) — this is required because `pg` is a CommonJS module and `esModuleInterop: true` is enabled.
+- `@types/pg` was added as a devDependency to resolve TypeScript's implicit `any` type error on the `pg` import.
+- The `DATABASE_URL` env var is read from `process.env` — ensure it is set in the Docker environment (via `docker-compose.yml`).
 
 ## Summary (AI generated)
 
-This branch adds two Dockerfiles that complete the container setup referenced by `docker-compose.yml`. Both use `node:20-alpine` as the base image, follow Docker layer caching best practices (`COPY package*.json` + `npm install` before `COPY . .`), and expose the correct ports (`4000` for api, `3000` for web). Both are configured for development with `npm run dev`.
+This branch bootstraps the Fastify API service. It introduces `src/index.ts` as the entry point, which wires up CORS (restricted to `http://localhost:3000`), a PostgreSQL database plugin, and a `/health` route returning `{ status: "ok" }`. The database plugin (`src/plugins/db.ts`) uses `fastify-plugin` to ensure the decorated `db` pool is available across the whole app. The module system was intentionally switched from ESM to CommonJS to be compatible with `ts-node` in the Docker dev environment.
