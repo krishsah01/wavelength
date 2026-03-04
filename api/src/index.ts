@@ -10,8 +10,15 @@ app.register(cors, {
 
 app.register(dbPlugin)
 
-app.get('/health', async () => {
-    return { status: 'ok' }
+app.get('/health', async (request, reply) => {
+    try {
+        const result = await app.db.query('SELECT NOW()')
+        return { status: 'ok', time: result.rows[0].now }
+    } catch (err) {
+        app.log.error(err, 'Health check database query failed')
+        reply.status(503)
+        return { status: 'error', message: 'Database unavailable' }
+    }
 })
 
 const start = async () => {
