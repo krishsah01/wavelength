@@ -1,10 +1,12 @@
 ## What does this PR do?
 
-Sets up the Fastify API with TypeScript, a PostgreSQL database plugin, CORS support, and a `/health` endpoint. Switches the module system from ESM to CommonJS to resolve `ts-node` compatibility issues in Docker
+Implements JWT-based authentication for the API. Adds a register and login route under `/api/auth`, a reusable `authenticate` middleware plugin, and TypeScript type declarations for the extended `FastifyInstance` and `FastifyRequest`. Also adds `bcrypt` and `jsonwebtoken` as dependencies.
 
 ## Related Issue
 
-Closes #5
+Closes #8
+Closes #9
+Closes #10
 
 ## Type of change
 
@@ -21,13 +23,13 @@ Closes #5
 
 ## Code Review Notes
 
-- `tsconfig.json` uses `module: "commonjs"` and `moduleResolution: "node"` — this was necessary because `ts-node --esm` does not support `.ts` file extensions in Node's ESM loader. CommonJS avoids this entirely and is the standard choice for `ts-node` setups.
-- `"type": "module"` was removed from `package.json` for the same reason — it conflicts with CommonJS `ts-node` execution.
-- Imports in `index.ts` use bare specifiers (`./plugins/db` not `./plugins/db.js`) which is correct for CommonJS.
-- `db.ts` uses `pg`'s default export with destructured `Pool` (`import pg from 'pg'; const { Pool } = pg`) — this is required because `pg` is a CommonJS module and `esModuleInterop: true` is enabled.
-- `@types/pg` was added as a devDependency to resolve TypeScript's implicit `any` type error on the `pg` import.
-- The `DATABASE_URL` env var is read from `process.env` — ensure it is set in the Docker environment (via `docker-compose.yml`).
+- `JWT_SECRET` is read directly from `process.env.JWT_SECRET as string` without a null-check. If the env var is missing, `jwt.sign` / `jwt.verify` will throw at runtime. Consider asserting it exists at startup.
+- `POST /auth/register` returns the full `user` row in the response body, including `password_hash`. Strip sensitive fields (at minimum `password_hash`) before sending.
+- The login route uses `SELECT *` — prefer selecting only the columns you need (e.g. `SELECT id, email, username, password_hash`) to avoid accidentally leaking future columns.
+- `request.body` is cast with `as { ... }` in both routes. Consider using Fastify's JSON schema validation (`schema: { body: ... }`) to get automatic validation and type inference at the framework level.
+- `tsconfig.json` had a trailing comma after `skipLibCheck` (invalid JSON) — fixed in this PR.
+- `files: ["src/types/fastify.d.ts"]` in `tsconfig.json` is redundant since `include: ["src/**/*"]` already covers it. Harmless but worth tidying.
 
 ## Summary (AI generated)
 
-This branch bootstraps the Fastify API service. It introduces `src/index.ts` as the entry point, which wires up CORS (restricted to `http://localhost:3000`), a PostgreSQL database plugin, and a `/health` route returning `{ status: "ok" }`. The database plugin (`src/plugins/db.ts`) uses `fastify-plugin` to ensure the decorated `db` pool is available across the whole app. The module system was intentionally switched from ESM to CommonJS to be compatible with `ts-node` in the Docker dev environment.
+This branch adds JWT authentication to the Fastify API. `src/plugins/auth.ts` registers an `authenticate` decorator that extracts and verifies a Bearer token from the `Authorization` header, attaching the decoded payload to `request.user`. `src/routes/auth.ts` exposes two routes — `POST /api/auth/register` (hashes password with bcrypt, inserts user, returns JWT) and `POST /api/auth/login` (verifies credentials, returns JWT). `src/types/fastify.d.ts` augments the Fastify module to type `app.db`, `app.authenticate`, and `request.user`. `src/types/db.ts` defines TypeScript interfaces mirroring the database schema (`User`, `Profile`, `Connection`, `ConversationStarter`).

@@ -12,6 +12,9 @@
   "include": [
     "src/**/*"
   ],
+  "files": [
+    "src/types/fastify.d.ts"
+  ],
   "exclude": [
     "node_modules"
   ]
