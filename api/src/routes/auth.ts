@@ -81,4 +81,7 @@ export default async function authRoutes(app: FastifyInstance) {
         )
         return reply.code(200).send({ token, message: 'Login successful' })
     })
+    app.post('/auth/logout', { preHandler: app.authenticate }, async (request, reply) => {
+        return reply.code(200).send({ message: 'Logged out successfully' })
+    })
 }
