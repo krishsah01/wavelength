@@ -7,12 +7,14 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "@fastify/cors": "^11.2.0",
     "bcrypt": "^6.0.0",
     "fastify": "^5.7.4",
     "fastify-plugin": "^5.1.0",
     "jsonwebtoken": "^9.0.3",
-    "pg": "^8.19.0"
+    "pg": "^8.19.0",
+    "voyageai": "^0.2.1"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
