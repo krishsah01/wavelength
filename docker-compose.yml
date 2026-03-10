@@ -21,6 +21,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       JWT_SECRET: ${JWT_SECRET}
+      VOYAGE_API_KEY: ${VOYAGE_API_KEY}
 
   web:
     build: ./web
