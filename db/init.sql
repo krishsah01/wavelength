@@ -12,7 +12,7 @@ CREATE TABLE profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) UNIQUE,
     bio TEXT NOT NULL,
-    embedding VECTOR(1536),
+    embedding VECTOR(1024),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 
