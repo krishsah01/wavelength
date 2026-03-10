@@ -14,6 +14,7 @@ Review the changes in this branch
 ## How to use it
 
 - Review the changes in this branch
+- Clear data from previously merged PR and just keep the template.
 - Fill in the PR template in /.github/pull_request_template.md
 - Flag anything worth reviewing before merge
 - if everything is good to go, write a suitable commit message and push the changes to the branch
