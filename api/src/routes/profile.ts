@@ -45,11 +45,11 @@ export default async function profileRoute(app: FastifyInstance) {
             }
 
         const profile = await app.db.query<Profile>(
-            'SELECT username, bio, created_at FROM users LEFT JOIN profiles ON profiles.user_id = users.id WHERE users.id = $1', [id]
+            'SELECT username, bio, created_at FROM users INNER JOIN profiles ON profiles.user_id = users.id WHERE users.id = $1', [id]
         )
 
         if (profile.rows.length <= 0) {
-            return reply.code(404).send({ message: "The user or profile doesnot exist" })
+            return reply.code(404).send({ message: "The user or profile does not exist" })
         }
 
         return reply.code(200).send({ profile: profile.rows[0], message: "Profile found Successfully" })
