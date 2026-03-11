@@ -4,6 +4,7 @@ import dbPlugin from "./plugins/db";
 import authRoutes from "./routes/auth";
 import authPlugin from './plugins/auth'
 import profileRoute from "./routes/profile";
+import { matchesRoute } from "./routes/matches";
 
 const app = Fastify({ logger: true })
 
@@ -19,6 +20,7 @@ app.register(authPlugin)
 //routes after plugin
 app.register(authRoutes, { prefix: '/api' })
 app.register(profileRoute, { prefix: "/api" })
+app.register(matchesRoute, { prefix: '/api' })
 
 app.get('/health', async (request, reply) => {
     try {

@@ -1,10 +1,10 @@
 ## What does this PR do?
 
-Adds `GET /api/profile/:id` — a protected endpoint that fetches a user's public profile by their user ID. Joins `users` and `profiles` to return `username`, `bio`, and `created_at` in a single query. Returns 404 if no user or profile is found.
+Adds `GET /api/matches` — a protected endpoint that computes semantic similarity between the authenticated user's profile embedding and all other users' embeddings using pgvector's cosine distance operator (`<=>`). Returns up to 10 matches ranked by similarity score, each with a truncated bio and a rounded score. Returns 404 if the requesting user has no profile/embedding yet.
 
 ## Related Issue
 
-Closes #14
+Closes #15
 
 ## Type of change
 
@@ -21,11 +21,12 @@ Closes #14
 
 ## Code Review Notes
 
-- The `LEFT JOIN` means the query will return a row even if the user exists but has no profile yet (`bio` and `created_at` from `profiles` will be `null`). If a `profiles` row is required, use `INNER JOIN` instead — or handle the `null bio` case explicitly before responding.
-- The route does not validate that `:id` is a valid UUID before hitting the database. An invalid UUID string will cause a Postgres error that bubbles up as an unhandled exception. Consider wrapping in a try/catch or validating the format first.
-- The 404 message has a typo: `"doesnot"` should be `"does not"`.
-- Any authenticated user can fetch any other user's profile by ID — this is likely intentional for a social/matching app but worth confirming.
+- The similarity score is computed as `1 - (p.embedding <=> $1::vector)` (cosine distance), rounded to 2 decimal places. A score of 1.0 = identical, 0.0 = orthogonal — the `ROUND(...::numeric, 2)` cast is required because pgvector returns a `float4` and Postgres's `ROUND` only accepts `numeric`.
+- The route fetches the user's own embedding in a first query, then runs the similarity query. This is two round-trips; it could be folded into a single CTE if performance becomes a concern.
+- The result type for both queries is typed as `Profile`, but the similarity query returns `{ username, bio, score }` — not a `Profile`. A dedicated result type (e.g. `MatchResult`) would be more accurate and avoid potential type confusion.
+- `LEFT(p.bio, 150)` truncates bios in the response, which is sensible for list views. The full bio is never exposed here, which is appropriate.
+- There is no guard against a user who has a `profiles` row but a `null` or zero-length embedding vector — the cosine distance query would still run but results would be meaningless. Worth adding a check or ensuring the embedding service always writes a non-null vector.
 
 ## Summary (AI generated)
 
-This branch adds a `GET /api/profile/:id` route to `src/routes/profile.ts`. The route is gated by `app.authenticate`, accepts a user UUID as a path parameter, and runs a `LEFT JOIN` between `users` and `profiles` to return `username`, `bio`, and `created_at`. Returns 404 if no matching user is found.
+This branch adds a new `GET /api/matches` route in `api/src/routes/matches.ts` and registers it in `api/src/index.ts`. The route is protected by `app.authenticate`, extracts the caller's `userId` from the JWT, fetches their stored embedding from `profiles`, then runs a pgvector cosine similarity query against all other users' profiles. Results are ordered by descending similarity, limited to 10, and include each user's `username`, a 150-character bio preview, and a numeric similarity `score`.
