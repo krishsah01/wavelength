@@ -1,16 +1,16 @@
 ## What does this PR do?
 
-Adds `generateStarters(bio1, bio2)` — a service function that calls the Anthropic Claude API to generate exactly 3 personalised conversation starters for two matched users based on their bios. Validates both bios before calling the API, parses the JSON array response, and asserts the expected length before returning.
+Implements the `GET /api/matches/:id/starters` endpoint which generates personalized conversation starters using the Anthropic Claude API based on the matching users' bios. Results are cached in the PostgreSQL `conversation_starters` table to save API calls on repeated requests. Prompt engineering was extensively refined to improve the casual tone, forcing the AI to only consider the match's bio (Person B) so it doesn't create weird comparisons, and uses an assistant message prefill (`[`) to strictly enforce JSON array output.
 
 ## Related Issue
 
-Closes #17
+Closes #18
 
 ## Type of change
 
 - [x] New feature
 - [ ] Bug fix
-- [ ] Refactor
+- [x] Refactor
 - [ ] DevOps / config
 
 ## Checklist
@@ -21,12 +21,10 @@ Closes #17
 
 ## Code Review Notes
 
-- The model is hardcoded as `claude-sonnet-4-20250514`. Consider moving this to a constant or env var so it can be swapped without touching business logic.
-- `JSON.parse` is called without a try/catch guard. If Claude returns malformed JSON, it will throw an opaque uncaught error. Wrapping just the parse call separately would give a clearer error message.
-- The `!starters` check after `JSON.parse` is a dead branch — `JSON.parse` either returns a value or throws, it never returns `null`/`undefined`. The length check on the next line is the real guard.
-- Error messages like `"something went wrong"` and `"Model error"` are vague — prefer more descriptive strings (e.g. `"Claude returned fewer than 3 starters"`) to make debugging easier.
-- The `Anthropic` client is instantiated at module load time. `ANTHROPIC_API_KEY` must be present in the environment when the module is first imported or the SDK will throw. Consistent with `embedding.ts` but confirm it is set in the Docker environment.
+- Caching logic in `GET /api/matches/:id/starters` normalizes the pair of user IDs so that user A requesting user B returns the same cached result as user B requesting user A (using `pair.sort()`). However, the prompt is one-directional (written to query about Person B's bio). If the cache is reused in reverse, the starters will be referencing User A's interests but presented to User B. This is a logic flaw worth addressing before production.
+- An assistant prefill `[` was added to the prompt messages to enforce the JSON response. Thus, `JSON.parse` is called with `'[' + block.text`. Check to ensure this does not result in malformed JSON if the model ever decides to actually output the `[` on its own.
+- The `anthropic.messages.create` parameters were changed to include `temperature: 0.9`. Ensure that we are satisfied with the response variability.
 
 ## Summary (AI generated)
 
-This branch adds `api/src/services/starters.ts`. The `generateStarters` function validates two bio strings, constructs a prompt instructing Claude to return a JSON array of 3 conversation starters, calls `anthropic.messages.create` with `claude-sonnet-4-20250514`, extracts the text block, parses the JSON, validates the array length, and returns the starters. Errors are logged and re-thrown to the caller.
+This PR introduces the conversation starter generation logic via GET `/api/matches/:id/starters` connecting with the Anthropic Claude API. It includes reading bios for matched users, issuing a well-crafted prompt, caching results in the `conversation_starters` table for subsequent hits on the same user pair, and returning a JSON array of 3 conversation starters. The Anthropic prompt was heavily refactored: removed Person A's bio from the user context to prevent unwanted comparison generation, employed few-shot examples for achieving a natural texting tone, and applied an assistant prefill to robustly enforce a JSON payload response.

@@ -10,21 +10,33 @@ export async function generateStarters(bio1: string, bio2: string): Promise<stri
             throw new Error("Bio is invalid")
         }
 
-        const PROMPT = `You are a matchmaker helping two people start a conversation based on their shared interests.
+        const systemPrompt = [
+            "You write first messages for a matching app. You sound like a real person — curious, casual, a little playful.",
+            "You will receive someone's bio. Write 3 short opening messages TO that person.",
+            "",
+            "Style guide:",
+            "- Talk like you're texting a friend of a friend, not writing a cover letter.",
+            "- Each message: react to ONE thing in their bio + ask ONE question. That's it.",
+            "- Never start with 'I noticed', 'I see that', 'Since we both', 'It's cool that', or 'We both'.",
+            "- Never mention your own interests or hobbies. You're asking about THEIRS.",
+            "- Keep it under 25 words.",
+            "",
+            "Examples of the vibe:",
+            '"Restoring old motorcycles is wild — what\'s the most satisfying part, tearing it apart or putting it back together?"',
+            '"Ok pour over coffee is a whole lifestyle — do you have a go-to bean or are you still experimenting?"',
+            '"Japanese literature rabbit hole, respect. Who got you into it?"',
+        ].join("\n")
 
-        Person A: ${bio1}
-        Person B: ${bio2}
-
-        Generate exactly 3 specific, genuine conversation starters based on their shared interests. Each starter should reference something concrete from both bios.
-
-        Return ONLY a JSON array of 3 strings. No explanation, no preamble, no markdown backticks. Example format:
-        ["starter 1", "starter 2", "starter 3"]`
+        const userMessage = `Here is your match's bio:\n"${bio2}"\n\nWrite 3 opening messages. Return ONLY a JSON array of 3 strings, nothing else.`
 
         const response = await anthropic.messages.create({
             model: 'claude-sonnet-4-20250514',
-            max_tokens: 1024,
+            max_tokens: 512,
+            temperature: 0.9,
+            system: systemPrompt,
             messages: [
-                { role: 'user', content: PROMPT }
+                { role: 'user', content: userMessage },
+                { role: 'assistant', content: '[' }
             ]
         })
 
@@ -34,7 +46,7 @@ export async function generateStarters(bio1: string, bio2: string): Promise<stri
             throw new Error('Unexpected response type from Claude')
         }
 
-        const starters: string[] = JSON.parse(block.text)
+        const starters: string[] = JSON.parse('[' + block.text)
 
         if (!starters) {
             throw new Error("Model error")
