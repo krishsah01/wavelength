@@ -1,16 +1,17 @@
 ## What does this PR do?
 
-Implements the `GET /api/matches/:id/starters` endpoint which generates personalized conversation starters using the Anthropic Claude API based on the matching users' bios. Results are cached in the PostgreSQL `conversation_starters` table to save API calls on repeated requests. Prompt engineering was extensively refined to improve the casual tone, forcing the AI to only consider the match's bio (Person B) so it doesn't create weird comparisons, and uses an assistant message prefill (`[`) to strictly enforce JSON array output.
+- Resolves the bi-directional caching issue for conversation starters by splitting the `starters` column into `starters_a_to_b` and `starters_b_to_a` in the `conversation_starters` table (resolving the logic flaw where User B might hit the cache initialized by User A).
+- Initializes a Next.js application in the `web/` directory to serve as the frontend.
 
 ## Related Issue
 
-Closes #18
+Closes #19
 
 ## Type of change
 
 - [x] New feature
-- [ ] Bug fix
-- [x] Refactor
+- [x] Bug fix
+- [ ] Refactor
 - [ ] DevOps / config
 
 ## Checklist
@@ -21,10 +22,12 @@ Closes #18
 
 ## Code Review Notes
 
-- Caching logic in `GET /api/matches/:id/starters` normalizes the pair of user IDs so that user A requesting user B returns the same cached result as user B requesting user A (using `pair.sort()`). However, the prompt is one-directional (written to query about Person B's bio). If the cache is reused in reverse, the starters will be referencing User A's interests but presented to User B. This is a logic flaw worth addressing before production.
-- An assistant prefill `[` was added to the prompt messages to enforce the JSON response. Thus, `JSON.parse` is called with `'[' + block.text`. Check to ensure this does not result in malformed JSON if the model ever decides to actually output the `[` on its own.
-- The `anthropic.messages.create` parameters were changed to include `temperature: 0.9`. Ensure that we are satisfied with the response variability.
+- The database schema change requires dropping and recreating the postgres database or running an explicit alter table if migrating old data. We altered `db/init.sql` directly to make the `starters_a_to_b` and `starters_b_to_a` columns nullable JSONB to support on-demand generation.
+- Added `next`, `next-auth`, `react`, `react-dom`, and `axios` to `web` package dependencies. `Next.js` and `Tailwind CSS` configuration files were generated.
+- Ensure `ON CONFLICT` logic in `matches.ts` handles the updates correctly when one user has generated starters but the other hasn't. It updates the corresponding column properly.
 
 ## Summary (AI generated)
 
-This PR introduces the conversation starter generation logic via GET `/api/matches/:id/starters` connecting with the Anthropic Claude API. It includes reading bios for matched users, issuing a well-crafted prompt, caching results in the `conversation_starters` table for subsequent hits on the same user pair, and returning a JSON array of 3 conversation starters. The Anthropic prompt was heavily refactored: removed Person A's bio from the user context to prevent unwanted comparison generation, employed few-shot examples for achieving a natural texting tone, and applied an assistant prefill to robustly enforce a JSON payload response.
+This PR includes two distinct changes: 
+1. Database and API updates to support bi-directional caching of conversation starters. The `conversation_starters` table was updated to use `starters_a_to_b` and `starters_b_to_a` columns instead of a single `starters` column. The `/matches/:id/starters` endpoint logic was adjusted to ensure starters are fetched or stored in the correct column based on whether the requester is the "User A" or "User B" in the sorted UUID pair.
+2. Next.js initialization in the `web/` directory to prepare for frontend development, configuring Next.js, React, Tailwind CSS, and necessary dependencies.

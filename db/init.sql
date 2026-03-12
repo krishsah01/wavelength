@@ -29,7 +29,8 @@ CREATE TABLE conversation_starters (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_a_id UUID REFERENCES users(id),
     user_b_id UUID REFERENCES users(id),
-    starters JSONB NOT NULL,
+    starters_a_to_b JSONB,
+    starters_b_to_a JSONB,
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE (user_a_id, user_b_id)
 );
