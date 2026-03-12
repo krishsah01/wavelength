@@ -26,6 +26,7 @@ export interface ConversationStarter {
     id: string
     user_a_id: string
     user_b_id: string
-    starters: string[]
+    starters_a_to_b: string[]
+    starters_b_to_a: string[]
     created_at: Date
 }

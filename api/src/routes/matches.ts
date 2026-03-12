@@ -28,43 +28,48 @@ export async function matchesRoute(app: FastifyInstance) {
     })
 
     app.get('/matches/:id/starters', { preHandler: app.authenticate }, async (request, reply) => {
-        const { userId } = request.user as
-            {
-                userId: UUID
-            }
-        const { id: matchId } = request.params as
-            {
-                id: UUID
-            }
+        const { userId } = request.user as { userId: UUID }
+        const { id: matchId } = request.params as { id: UUID }
 
-        const pair = [userId, matchId]
-        const normalizedPair = pair.sort()
+        const normalizedPair = [userId, matchId].sort()
+        const userIsA = normalizedPair[0] === userId
+        const startersColumn = userIsA ? 'starters_a_to_b' : 'starters_b_to_a'
 
-        const existingStarters = await app.db.query<ConversationStarter>(
-            'SELECT starters FROM conversation_starters WHERE user_a_id = $1 AND user_b_id = $2', normalizedPair
+        const existingRow = await app.db.query<{ starters: string[] | null }>(
+            `SELECT ${startersColumn} AS starters FROM conversation_starters WHERE user_a_id = $1 AND user_b_id = $2`,
+            normalizedPair
         )
-
-        if (existingStarters.rows.length > 0) {
-            return reply.code(200).send({ starters: existingStarters.rows[0].starters, message: "Successfully Found Starters" })
+        if (existingRow.rows.length > 0 && existingRow.rows[0].starters !== null) {
+            return reply.code(200).send({ starters: existingRow.rows[0].starters, message: "Successfully Found Starters" })
         }
 
         const fetchBios = await app.db.query<Profile>(
-            'SELECT bio FROM profiles WHERE user_id IN ($1,$2)', [userId, matchId]
+            'SELECT user_id, bio FROM profiles WHERE user_id IN ($1,$2)', [userId, matchId]
         )
 
         if (fetchBios.rows.length < 2) {
             return reply.code(404).send({ error: 'Match not found' })
         }
 
-        const bio1: string = fetchBios.rows[0].bio
-        const bio2: string = fetchBios.rows[1].bio
+        const matchBio = fetchBios.rows.find(r => r.user_id === matchId)?.bio
+        if (!matchBio) {
+            return reply.code(404).send({ error: 'Match profile not found' })
+        }
 
-        const starters: string[] = await generateStarters(bio1, bio2)
+        const senderBio = fetchBios.rows.find(r => r.user_id === userId)?.bio
+        if (!senderBio) {
+            return reply.code(404).send({ error: 'Your profile not found' })
+        }
 
-        const starterJson: string = JSON.stringify(starters)
+        const starters: string[] = await generateStarters(senderBio, matchBio)
+        const startersJson: string = JSON.stringify(starters)
 
         await app.db.query<ConversationStarter>(
-            'INSERT INTO conversation_starters (user_a_id, user_b_id, starters) VALUES ($1,$2,$3)', [normalizedPair[0], normalizedPair[1], starterJson]
+            `INSERT INTO conversation_starters (user_a_id, user_b_id, ${startersColumn})
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_a_id, user_b_id)
+         DO UPDATE SET ${startersColumn} = $3`,
+            [normalizedPair[0], normalizedPair[1], startersJson]
         )
 
         return reply.code(200).send({ starters, message: "Starters fetched or created successfully" })

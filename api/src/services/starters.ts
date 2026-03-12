@@ -46,7 +46,7 @@ export async function generateStarters(bio1: string, bio2: string): Promise<stri
             throw new Error('Unexpected response type from Claude')
         }
 
-        const starters: string[] = JSON.parse('[' + block.text)
+        const starters: string[] = JSON.parse('[' + block.text.trim())
 
         if (!starters) {
             throw new Error("Model error")
