@@ -2,19 +2,19 @@
 
 @theme inline {
   --color-primary: #e0a548;
-  --color-background-dark: #0f0d1e;
-  --color-surface-dark: #181530;
-  --color-elevated: #231f42;
-  --color-plum: #2d2435;
-  --color-plum-border: #453852;
-  --color-text-secondary: #9894b0;
+  --color-background-dark: #1a1208;
+  --color-surface-dark: #231510;
+  --color-elevated: #2d1f1a;
+  --color-plum: #3a2a20;
+  --color-plum-border: #4a3828;
+  --color-text-secondary: #9a8870;
 
   --font-display: var(--font-newsreader);
   --font-sans: var(--font-inter);
 }
 
 body {
-  background: #0f0d1e;
-  color: #edeaf8;
+  background: #1a1208;
+  color: #ede8d8;
   font-family: var(--font-inter), sans-serif;
 }
