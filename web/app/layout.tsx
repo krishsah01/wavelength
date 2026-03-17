@@ -26,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${newsreader.variable} ${inter.variable} antialiased bg-[#0f0d1e] text-slate-100`}
+        className={`${newsreader.variable} ${inter.variable} antialiased bg-[#1a1208] text-[#ede8d8]`}
       >
         {children}
       </body>
