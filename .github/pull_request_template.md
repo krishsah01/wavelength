@@ -1,18 +1,17 @@
 ## What does this PR do?
 
-- Resolves the bi-directional caching issue for conversation starters by splitting the `starters` column into `starters_a_to_b` and `starters_b_to_a` in the `conversation_starters` table (resolving the logic flaw where User B might hit the cache initialized by User A).
-- Initializes a Next.js application in the `web/` directory to serve as the frontend.
+Adds an Axios API client configuration with authentication and error handling interceptors. Updates the Next.js frontend color scheme to match standard background themes. Also adds `.dockerignore` to the `web` directory and introduces `next-env.d.ts` for Next.js environment types.
 
 ## Related Issue
 
-Closes #19
+Closes #20
 
 ## Type of change
 
 - [x] New feature
-- [x] Bug fix
+- [ ] Bug fix
 - [ ] Refactor
-- [ ] DevOps / config
+- [x] DevOps / config
 
 ## Checklist
 
@@ -22,12 +21,10 @@ Closes #19
 
 ## Code Review Notes
 
-- The database schema change requires dropping and recreating the postgres database or running an explicit alter table if migrating old data. We altered `db/init.sql` directly to make the `starters_a_to_b` and `starters_b_to_a` columns nullable JSONB to support on-demand generation.
-- Added `next`, `next-auth`, `react`, `react-dom`, and `axios` to `web` package dependencies. `Next.js` and `Tailwind CSS` configuration files were generated.
-- Ensure `ON CONFLICT` logic in `matches.ts` handles the updates correctly when one user has generated starters but the other hasn't. It updates the corresponding column properly.
+- The Axios interceptor stores the JWT token in `localStorage` which is retrieved on every request. This implies client-side only usage since `localStorage` won't be available during Server-Side Rendering (SSR). Ensure that any SSR usage of this API instance manages tokens separately.
+- In the error interceptor, unauthenticated 401 responses redirect directly to `/login` via `window.location.href = '/login'`. Note that doing a full page reload will bypass Next.js client-side routing.
+- The color constants in `globals.css` were updated, and `layout.tsx` was adjusted to properly reflect the `bg-[#1a1208]` background and `text-[#ede8d8]` text colors.
 
 ## Summary (AI generated)
 
-This PR includes two distinct changes: 
-1. Database and API updates to support bi-directional caching of conversation starters. The `conversation_starters` table was updated to use `starters_a_to_b` and `starters_b_to_a` columns instead of a single `starters` column. The `/matches/:id/starters` endpoint logic was adjusted to ensure starters are fetched or stored in the correct column based on whether the requester is the "User A" or "User B" in the sorted UUID pair.
-2. Next.js initialization in the `web/` directory to prepare for frontend development, configuring Next.js, React, Tailwind CSS, and necessary dependencies.
+This branch introduces a configured Axios API client in `web/lib/api.ts` with a request interceptor to auto-attach authorization tokens from `localStorage`, and a response interceptor to redirect 401s to `/login`. It additionally modifies the Next.js `globals.css` and `layout.tsx` files to unify the dark mode color scheme context. Finally, it adds environment support files (`.dockerignore`, `next-env.d.ts`) typical for a Next.js setup.
