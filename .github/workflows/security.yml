@@ -28,7 +28,7 @@ jobs:
         run: npm audit --omit=dev --audit-level=moderate
         working-directory: api
 
-      - name: Install web dependencies
+      - name: Set up Node.js (web)
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -55,8 +55,8 @@ jobs:
         uses: trufflesecurity/trufflehog@v3.88.0
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           extra_args: --only-verified
 
   codeql:

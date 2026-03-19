@@ -12,8 +12,8 @@ If you discover a security vulnerability in Wavelength, please do **not** open a
 
 Instead, please report it privately:
 
-1. **GitHub private vulnerability reporting** (preferred): [Report a vulnerability](https://github.com/krishsah01/wavelength/security/advisories/new)
-2. **Email**: reach the maintainer directly via the contact in the GitHub profile.
+1. **GitHub private vulnerability reporting** (preferred): navigate to the **Security** tab of this repository and click **"Report a vulnerability"** to open a private advisory.
+2. **Email**: reach the maintainer via the email address listed on their GitHub profile.
 
 ### What to include
 
