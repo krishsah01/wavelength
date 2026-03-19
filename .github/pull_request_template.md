@@ -1,31 +1,22 @@
 ## What does this PR do?
 
-Adds explicit authorization checks on the two endpoints that were vulnerable to Broken Object-Level Authorization (BOLA/IDOR — OWASP API Security Top 10 #1).
+Patches all known production CVEs in `api/` and `web/` as identified in the March 2026 security audit.
 
-**`GET /api/matches/:id/starters` — BOLA mitigation:**
-Before generating or returning conversation starters, the endpoint now verifies that `matchId` is actually in the requesting user's top-10 cosine similarity match results. If a user tries to request starters for an arbitrary UUID that is not their match, the server returns 403 and logs a warn-level security event. This prevents:
-- Scraping bios for arbitrary user pairs
-- Triggering Claude API calls for any user combination
-- Enumerating user profiles via the starters endpoint
-
-**`GET /api/profile/:id` — access policy documented (Option A):**
-Profile data (username, bio, join date) remains visible to all authenticated users. This is an intentional policy choice for a social discovery platform. The decision is documented in a comment directly in the route handler so future engineers know it was a deliberate decision, not an oversight.
-
-**Additional improvements in this PR:**
-- `GET /matches` now returns `user_id` in each match row so the frontend can resolve starters requests by user ID without additional lookups
-- UUID param schema added to `GET /matches/:id/starters` (in line with the schema-validation work from #63)
-- Error response shapes normalized to `{ statusCode, error, message }` on match/profile routes
+- Upgrades `fastify` in `api/` to fix GHSA-573f-x89g-hqp9 (malformed Content-Type bypass)
+- Upgrades `next` in `web/` from `16.1.6` to `16.2.0` to fix 5 moderate CVEs: GHSA-mq59-m269-xvcx (CSRF), GHSA-jcc7-9wpm-mj36 (HMR CSRF), GHSA-3x4c-7xq6-9pq8 (disk cache DoS), GHSA-h27x-g6w4-24gq (resume buffer DoS), GHSA-ggv3-7p47-pfv8 (HTTP request smuggling)
+- Both `npm audit --omit=dev` commands now return `0 vulnerabilities`
+- All TypeScript builds and Next.js production builds pass cleanly post-upgrade
 
 ## Related Issue
 
-Closes #64
+Closes #65
 
 ## Type of change
 
 - [ ] New feature
-- [x] Bug fix
+- [ ] Bug fix
 - [ ] Refactor
-- [ ] DevOps / config
+- [x] DevOps / config
 
 ## Checklist
 
@@ -35,9 +26,10 @@ Closes #64
 
 ## Code Review Notes
 
-- The BOLA check runs a second cosine similarity query (the same one used by `GET /matches`). This adds one DB round-trip per uncached starters request. For a v1 app this is acceptable. If latency becomes a concern, the match list can be cached in Redis with a short TTL.
-- The warn-level log on BOLA attempts includes `userId` and `matchId` — no PII beyond identifiers. This enables security monitoring without leaking bio content.
+- `npm audit fix --force` was required for the Next.js upgrade since `16.2.0` is outside the `^16.1.6` range stated in `package.json`. The caret range in `package.json` has been updated accordingly via `package-lock.json`.
+- No source code changes — only `package-lock.json` files and `web/package.json` version range were modified.
+- The TypeScript API build and Next.js production build were both verified to pass before merging.
 
 ## Summary (AI generated)
 
-Closes the BOLA vulnerability on the starters endpoint by verifying that the target user is in the requesting user's actual match list before serving or generating any starters. An unauthorized attempt returns 403 and is logged. The profile endpoint's open access policy is now explicitly documented as an intentional design decision rather than an unreviewed gap.
+Resolves all 6 moderate-severity CVEs flagged by `npm audit` across the API and web services. The Fastify patch fixes a content-type validation bypass; the Next.js upgrade to 16.2.0 closes five vulnerabilities including two CSRF bypasses, two DoS vectors, and an HTTP request smuggling issue in rewrites. No application behaviour changes.
