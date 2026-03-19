@@ -1,25 +1,31 @@
 ## What does this PR do?
 
-Builds the landing page at `/` with hero section, stats, feature cards, how-it-works steps, and a CTA.
+Adds explicit authorization checks on the two endpoints that were vulnerable to Broken Object-Level Authorization (BOLA/IDOR — OWASP API Security Top 10 #1).
 
-- Hero heading "Connect in the Twilight Hours" with value proposition copy and two CTAs (Find My People → /register, Sign in → /login)
-- Stats bar (50k+ wavelengths, 1.2k connections, 210+ communities, 250k+ conversations)
-- Three feature cards (Deep Focus, Curated, Global Pulse)
-- Three-step explainer (Describe → AI matches → Conversation starters)
-- Full-width CTA section with "The night is waiting for you" tagline
-- Responsive two-column nav; responsive grid layouts at md breakpoint
-- Uses existing Dusk Glow design tokens from globals.css (primary gold #e0a548, dark backgrounds, Newsreader italic for display type)
+**`GET /api/matches/:id/starters` — BOLA mitigation:**
+Before generating or returning conversation starters, the endpoint now verifies that `matchId` is actually in the requesting user's top-10 cosine similarity match results. If a user tries to request starters for an arbitrary UUID that is not their match, the server returns 403 and logs a warn-level security event. This prevents:
+- Scraping bios for arbitrary user pairs
+- Triggering Claude API calls for any user combination
+- Enumerating user profiles via the starters endpoint
+
+**`GET /api/profile/:id` — access policy documented (Option A):**
+Profile data (username, bio, join date) remains visible to all authenticated users. This is an intentional policy choice for a social discovery platform. The decision is documented in a comment directly in the route handler so future engineers know it was a deliberate decision, not an oversight.
+
+**Additional improvements in this PR:**
+- `GET /matches` now returns `user_id` in each match row so the frontend can resolve starters requests by user ID without additional lookups
+- UUID param schema added to `GET /matches/:id/starters` (in line with the schema-validation work from #63)
+- Error response shapes normalized to `{ statusCode, error, message }` on match/profile routes
 
 ## Related Issue
 
-Closes #23
+Closes #64
 
 ## Type of change
 
-- [x] New feature
-- [ ] Bug fix
+- [ ] New feature
+- [x] Bug fix
 - [ ] Refactor
-- [x] DevOps / config
+- [ ] DevOps / config
 
 ## Checklist
 
@@ -29,10 +35,9 @@ Closes #23
 
 ## Code Review Notes
 
-- No external images used — purely CSS/Tailwind for visual treatment, keeping the build dependency-free.
-- The decorative glow element uses `pointer-events-none` and very low opacity so it never interferes with interaction.
-- All links point to `/register` and `/login` which will be built in Issues #24 and #25.
+- The BOLA check runs a second cosine similarity query (the same one used by `GET /matches`). This adds one DB round-trip per uncached starters request. For a v1 app this is acceptable. If latency becomes a concern, the match list can be cached in Redis with a short TTL.
+- The warn-level log on BOLA attempts includes `userId` and `matchId` — no PII beyond identifiers. This enables security monitoring without leaking bio content.
 
 ## Summary (AI generated)
 
-Replaces the placeholder home page with a full marketing landing page matching the Dusk Glow aesthetic. The page is server-rendered (no client-side JS needed), responsive at mobile/tablet/desktop breakpoints, and links forward to the registration and login flows.
+Closes the BOLA vulnerability on the starters endpoint by verifying that the target user is in the requesting user's actual match list before serving or generating any starters. An unauthorized attempt returns 403 and is logged. The profile endpoint's open access policy is now explicitly documented as an intentional design decision rather than an unreviewed gap.
