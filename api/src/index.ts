@@ -2,13 +2,36 @@ import Fastify from "fastify";
 import cors from '@fastify/cors'
 import rateLimit from '@fastify/rate-limit'
 import cookie from '@fastify/cookie'
+import helmet from '@fastify/helmet'
 import dbPlugin from "./plugins/db";
 import authRoutes from "./routes/auth";
 import authPlugin from './plugins/auth'
 import profileRoute from "./routes/profile";
 import { matchesRoute } from "./routes/matches";
 
-const app = Fastify({ logger: true })
+const isProd = process.env.NODE_ENV === 'production'
+
+const app = Fastify({
+    logger: {
+        level: isProd ? 'info' : 'debug',
+        redact: {
+            paths: [
+                'req.headers.authorization',
+                'req.headers.cookie',
+                'body.password',
+                'body.embedding',
+            ],
+            censor: '[REDACTED]',
+        },
+    },
+    ajv: {
+        customOptions: {
+            formats: {
+                email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+            },
+        },
+    },
+})
 
 // 1. cors first — credentials: true required for HTTP-only cookie auth
 app.register(cors, {
@@ -16,10 +39,16 @@ app.register(cors, {
     credentials: true,
 })
 
-// 2. cookie parser (must be before auth plugin)
+// 2. security headers
+app.register(helmet, {
+    contentSecurityPolicy: false,
+    hsts: isProd ? { maxAge: 63072000, includeSubDomains: true } : false,
+})
+
+// 3. cookie parser (must be before auth plugin)
 app.register(cookie)
 
-// 2. global rate limit: 100 req/min per IP
+// 4. global rate limit: 100 req/min per IP
 app.register(rateLimit, {
     global: true,
     max: 100,
