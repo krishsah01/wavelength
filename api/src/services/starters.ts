@@ -58,7 +58,6 @@ export async function generateStarters(bio1: string, bio2: string): Promise<stri
 
         return starters
     } catch (err) {
-        console.error(err)
         throw err
     }
 }
