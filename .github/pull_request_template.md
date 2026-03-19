@@ -1,14 +1,21 @@
 ## What does this PR do?
 
-Adds an Axios API client configuration with authentication and error handling interceptors. Updates the Next.js frontend color scheme to match standard background themes. Also adds `.dockerignore` to the `web` directory and introduces `next-env.d.ts` for Next.js environment types.
+Adds rate limiting across the API to protect against brute-force login attacks and AI-cost exhaustion abuse.
+
+- Installs `@fastify/rate-limit` and registers a global limit of 100 requests/minute per IP on all routes
+- Applies a strict per-route limit on `POST /api/auth/login`: 10 requests / 15 minutes per IP, with a generic 429 message that does not reveal account existence
+- Applies per-user rate limits on AI-cost routes (keyed by `userId` to prevent IP-rotation bypass): `POST /api/profile` capped at 10/hour; `GET /api/matches/:id/starters` capped at 30/hour
+- All 429 responses include a human-readable message and are served before business logic runs
+- Rate limit headers (`x-ratelimit-limit`, `x-ratelimit-remaining`, `x-ratelimit-reset`) are added to all responses
+- CORS `origin` is now driven by `CORS_ORIGIN` env var with fallback to `http://localhost:3000`
 
 ## Related Issue
 
-Closes #20
+Closes #61
 
 ## Type of change
 
-- [x] New feature
+- [ ] New feature
 - [ ] Bug fix
 - [ ] Refactor
 - [x] DevOps / config
@@ -21,10 +28,10 @@ Closes #20
 
 ## Code Review Notes
 
-- The Axios interceptor stores the JWT token in `localStorage` which is retrieved on every request. This implies client-side only usage since `localStorage` won't be available during Server-Side Rendering (SSR). Ensure that any SSR usage of this API instance manages tokens separately.
-- In the error interceptor, unauthenticated 401 responses redirect directly to `/login` via `window.location.href = '/login'`. Note that doing a full page reload will bypass Next.js client-side routing.
-- The color constants in `globals.css` were updated, and `layout.tsx` was adjusted to properly reflect the `bg-[#1a1208]` background and `text-[#ede8d8]` text colors.
+- The `keyGenerator` on authenticated routes falls back to `request.ip` for the case where `request.user` is not yet populated (e.g. pre-auth middleware failure). This ensures unauthenticated abuse is also caught.
+- Login limit uses IP-based keying intentionally so a single attacker can't bypass it by registering many accounts.
+- The `errorResponseBuilder` always returns the same body shape regardless of route to avoid leaking rate limit state.
 
 ## Summary (AI generated)
 
-This branch introduces a configured Axios API client in `web/lib/api.ts` with a request interceptor to auto-attach authorization tokens from `localStorage`, and a response interceptor to redirect 401s to `/login`. It additionally modifies the Next.js `globals.css` and `layout.tsx` files to unify the dark mode color scheme context. Finally, it adds environment support files (`.dockerignore`, `next-env.d.ts`) typical for a Next.js setup.
+Implements three layers of rate limiting: a global 100 req/min IP limit across all routes, a strict 10-per-15-min IP limit on the login endpoint to block brute-force attacks, and per-user hourly limits on the two AI-backed routes to prevent cost exhaustion. Rate limit headers are exposed on every response for client-side backoff implementation.

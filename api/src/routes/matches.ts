@@ -27,7 +27,21 @@ export async function matchesRoute(app: FastifyInstance) {
 
     })
 
-    app.get('/matches/:id/starters', { preHandler: app.authenticate }, async (request, reply) => {
+    app.get('/matches/:id/starters', {
+        preHandler: app.authenticate,
+        config: {
+            rateLimit: {
+                max: 30,
+                timeWindow: '1 hour',
+                keyGenerator: (request) => (request.user as { userId: string } | undefined)?.userId ?? request.ip,
+                errorResponseBuilder: () => ({
+                    statusCode: 429,
+                    error: 'Too Many Requests',
+                    message: 'Starters request limit reached. Please try again later.',
+                }),
+            },
+        },
+    }, async (request, reply) => {
         const { userId } = request.user as { userId: UUID }
         const { id: matchId } = request.params as { id: UUID }
 
