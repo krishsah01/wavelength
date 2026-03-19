@@ -4,7 +4,21 @@ import { generateEmbedding } from "../services/embedding";
 import { Profile } from "../types/db";
 
 export default async function profileRoute(app: FastifyInstance) {
-    app.post('/profile', { preHandler: app.authenticate }, async (request, reply) => {
+    app.post('/profile', {
+        preHandler: app.authenticate,
+        config: {
+            rateLimit: {
+                max: 10,
+                timeWindow: '1 hour',
+                keyGenerator: (request) => (request.user as { userId: string } | undefined)?.userId ?? request.ip,
+                errorResponseBuilder: () => ({
+                    statusCode: 429,
+                    error: 'Too Many Requests',
+                    message: 'Profile update limit reached. You can update your profile up to 10 times per hour.',
+                }),
+            },
+        },
+    }, async (request, reply) => {
         try {
             const { userId } = request.user as
                 {

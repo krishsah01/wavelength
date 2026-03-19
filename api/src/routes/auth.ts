@@ -49,7 +49,19 @@ export default async function authRoutes(app: FastifyInstance) {
 
         return reply.code(201).send({ token, user, message: 'User successfully created' })
     })
-    app.post('/auth/login', async (request, reply) => {
+    app.post('/auth/login', {
+        config: {
+            rateLimit: {
+                max: 10,
+                timeWindow: '15 minutes',
+                errorResponseBuilder: () => ({
+                    statusCode: 429,
+                    error: 'Too Many Requests',
+                    message: 'Too many login attempts. Please try again later.',
+                }),
+            },
+        },
+    }, async (request, reply) => {
         const { email, password } = request.body as {
             email: string
             password: string

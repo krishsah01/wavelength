@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from '@fastify/cors'
+import rateLimit from '@fastify/rate-limit'
 import dbPlugin from "./plugins/db";
 import authRoutes from "./routes/auth";
 import authPlugin from './plugins/auth'
@@ -10,7 +11,29 @@ const app = Fastify({ logger: true })
 
 // 1. cors first
 app.register(cors, {
-    origin: 'http://localhost:3000'
+    origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000'
+})
+
+// 2. global rate limit: 100 req/min per IP
+app.register(rateLimit, {
+    global: true,
+    max: 100,
+    timeWindow: '1 minute',
+    errorResponseBuilder: (_request, context) => ({
+        statusCode: 429,
+        error: 'Too Many Requests',
+        message: `Rate limit exceeded. Please retry after ${Math.ceil(context.ttl / 1000)} seconds.`,
+    }),
+    addHeadersOnExceeding: {
+        'x-ratelimit-limit': true,
+        'x-ratelimit-remaining': true,
+        'x-ratelimit-reset': true,
+    },
+    addHeaders: {
+        'x-ratelimit-limit': true,
+        'x-ratelimit-remaining': true,
+        'x-ratelimit-reset': true,
+    },
 })
 
 //register plugins
