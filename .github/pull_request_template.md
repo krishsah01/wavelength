@@ -1,22 +1,26 @@
 ## What does this PR do?
 
-Builds the landing page at `/` with hero section, stats, feature cards, how-it-works steps, and a CTA.
+Adds a full automated CI security gate that runs on every push and pull request to `main`, plus Dependabot auto-update config and a `SECURITY.md` responsible disclosure policy.
 
-- Hero heading "Connect in the Twilight Hours" with value proposition copy and two CTAs (Find My People → /register, Sign in → /login)
-- Stats bar (50k+ wavelengths, 1.2k connections, 210+ communities, 250k+ conversations)
-- Three feature cards (Deep Focus, Curated, Global Pulse)
-- Three-step explainer (Describe → AI matches → Conversation starters)
-- Full-width CTA section with "The night is waiting for you" tagline
-- Responsive two-column nav; responsive grid layouts at md breakpoint
-- Uses existing Dusk Glow design tokens from globals.css (primary gold #e0a548, dark backgrounds, Newsreader italic for display type)
+**`.github/workflows/security.yml`** — three jobs:
+- **SCA**: runs `npm audit --omit=dev --audit-level=moderate` in both `api/` and `web/`; fails the build if any moderate+ CVE is present in production dependencies
+- **Secret scan**: uses `trufflesecurity/trufflehog` to scan the git history on every PR for verified leaked credentials
+- **SAST (CodeQL)**: runs GitHub's CodeQL analysis for `javascript-typescript` with the `security-extended` query suite; results appear in the Security tab
+
+**`.github/dependabot.yml`** — weekly Dependabot PRs for:
+- `npm` packages in `api/`
+- `npm` packages in `web/`
+- GitHub Actions in `.github/workflows/`
+
+**`SECURITY.md`** — responsible disclosure policy linking to GitHub private advisory reporting, with response SLA commitments.
 
 ## Related Issue
 
-Closes #23
+Closes #69
 
 ## Type of change
 
-- [x] New feature
+- [ ] New feature
 - [ ] Bug fix
 - [ ] Refactor
 - [x] DevOps / config
@@ -29,10 +33,10 @@ Closes #23
 
 ## Code Review Notes
 
-- No external images used — purely CSS/Tailwind for visual treatment, keeping the build dependency-free.
-- The decorative glow element uses `pointer-events-none` and very low opacity so it never interferes with interaction.
-- All links point to `/register` and `/login` which will be built in Issues #24 and #25.
+- TruffleHog is set to `--only-verified` to reduce false positives on test tokens and example strings.
+- CodeQL `security-extended` is more thorough than the default `security-and-quality` suite and is appropriate for an app handling user credentials and PII.
+- The `sca` job uses two separate `setup-node` steps because each `working-directory` has its own `package-lock.json`; this ensures the correct lockfile is used for caching.
 
 ## Summary (AI generated)
 
-Replaces the placeholder home page with a full marketing landing page matching the Dusk Glow aesthetic. The page is server-rendered (no client-side JS needed), responsive at mobile/tablet/desktop breakpoints, and links forward to the registration and login flows.
+Establishes continuous security validation in CI across three dimensions: software composition analysis (SCA) for known CVEs, secret scanning for leaked credentials in commits, and static analysis (SAST) via CodeQL for code-level vulnerabilities. Dependabot is configured to automatically propose patches for all three dependency scopes on a weekly cadence. A SECURITY.md provides a clear responsible disclosure channel.
