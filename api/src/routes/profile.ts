@@ -64,6 +64,22 @@ export default async function profileRoute(app: FastifyInstance) {
         }
     })
 
+    // GET /profile/me — returns the authenticated user's own profile
+    app.get('/profile/me', { preHandler: app.authenticate }, async (request, reply) => {
+        const { userId } = request.user as { userId: UUID }
+
+        const profile = await app.db.query<Profile>(
+            'SELECT username, bio, created_at FROM users INNER JOIN profiles ON profiles.user_id = users.id WHERE users.id = $1',
+            [userId]
+        )
+
+        if (profile.rows.length === 0) {
+            return reply.code(404).send({ statusCode: 404, error: 'Not Found', message: 'Profile not found' })
+        }
+
+        return reply.code(200).send({ profile: profile.rows[0] })
+    })
+
     // Access policy (Option A — intentional): profile data (username, bio, join date) is
     // visible to any authenticated user. This is appropriate for a social discovery platform
     // where the goal is for users to find and read each other's interests.
