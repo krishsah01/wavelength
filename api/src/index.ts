@@ -8,6 +8,7 @@ import authRoutes from "./routes/auth";
 import authPlugin from './plugins/auth'
 import profileRoute from "./routes/profile";
 import { matchesRoute } from "./routes/matches";
+import { connectionsRoute } from "./routes/connections";
 
 const isProd = process.env.NODE_ENV === 'production'
 
@@ -78,6 +79,7 @@ app.register(authPlugin)
 app.register(authRoutes, { prefix: '/api' })
 app.register(profileRoute, { prefix: "/api" })
 app.register(matchesRoute, { prefix: '/api' })
+app.register(connectionsRoute, { prefix: '/api' })
 
 app.get('/health', async (request, reply) => {
     try {
