@@ -9,23 +9,29 @@ interface JWTPayload {
 
 async function authPlugin(app: FastifyInstance) {
     app.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply) => {
+        // Prefer cookie (browser clients) then fall back to Bearer header (API clients / mobile)
+        const cookieToken = (request as FastifyRequest & { cookies?: Record<string, string> }).cookies?.token
         const authHeader = request.headers.authorization
-        if (!authHeader) {
-            return reply.code(401).send({ error: 'Missing authorization header' })
-        }
-        if (!authHeader.startsWith("Bearer ")) {
-            return reply.code(401).send({ error: "Invalid authorization token" })
+
+        let token: string | undefined
+
+        if (cookieToken) {
+            token = cookieToken
+        } else if (authHeader?.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1]
         }
 
-        const headers = authHeader.split(" ")
-        const token = headers[1]
+        if (!token) {
+            return reply.code(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Missing authentication token' })
+        }
+
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as JWTPayload
             request.user = { userId: decoded.userId, email: decoded.email }
-        } catch (err) {
-            return reply.code(401).send({ error: 'Invalid or expired token' })
+        } catch {
+            return reply.code(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Invalid or expired token' })
         }
     })
-
 }
+
 export default fp(authPlugin)

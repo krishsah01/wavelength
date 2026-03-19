@@ -1,25 +1,29 @@
 ## What does this PR do?
 
-Builds the landing page at `/` with hero section, stats, feature cards, how-it-works steps, and a CTA.
+Moves the JWT out of `localStorage` (XSS-accessible) into an HTTP-only cookie managed by the API. This is the standard mitigation for session token theft via cross-site scripting.
 
-- Hero heading "Connect in the Twilight Hours" with value proposition copy and two CTAs (Find My People → /register, Sign in → /login)
-- Stats bar (50k+ wavelengths, 1.2k connections, 210+ communities, 250k+ conversations)
-- Three feature cards (Deep Focus, Curated, Global Pulse)
-- Three-step explainer (Describe → AI matches → Conversation starters)
-- Full-width CTA section with "The night is waiting for you" tagline
-- Responsive two-column nav; responsive grid layouts at md breakpoint
-- Uses existing Dusk Glow design tokens from globals.css (primary gold #e0a548, dark backgrounds, Newsreader italic for display type)
+**API changes:**
+- Installs `@fastify/cookie` and registers it before the auth plugin
+- `POST /api/auth/login` and `POST /api/auth/register` now call `reply.setCookie('token', token, { httpOnly: true, secure: true (prod), sameSite: 'strict', maxAge: 7d })` and no longer return the raw JWT in the response body
+- `POST /api/auth/logout` calls `reply.clearCookie('token')` to expire the cookie server-side
+- `plugins/auth.ts` now reads the token from `request.cookies.token` first, then falls back to `Authorization: Bearer` header for API clients and mobile apps
+- CORS updated to `credentials: true` (already present in the rate-limiting PR) so cross-origin cookie exchange works
+
+**Frontend changes:**
+- `web/lib/api.ts`: removed `localStorage.getItem('token')` and the `Authorization` header injection; replaced with `withCredentials: true` on the Axios instance so the browser sends the cookie automatically
+- `web/app/api/auth/[...nextauth]/route.ts`: authorize callback no longer stores the raw JWT in the session; returns a minimal `{ id }` object; session callbacks pass through without token propagation
+- `web/types/next-auth.d.ts`: removed the `token` field augmentations from `User`, `Session`, and `JWT` — they are no longer needed
 
 ## Related Issue
 
-Closes #23
+Closes #62
 
 ## Type of change
 
-- [x] New feature
+- [ ] New feature
 - [ ] Bug fix
-- [ ] Refactor
-- [x] DevOps / config
+- [x] Refactor
+- [ ] DevOps / config
 
 ## Checklist
 
@@ -29,10 +33,10 @@ Closes #23
 
 ## Code Review Notes
 
-- No external images used — purely CSS/Tailwind for visual treatment, keeping the build dependency-free.
-- The decorative glow element uses `pointer-events-none` and very low opacity so it never interferes with interaction.
-- All links point to `/register` and `/login` which will be built in Issues #24 and #25.
+- The `Bearer` header fallback in `auth.ts` is intentional: API clients (mobile apps, Postman) that cannot use cookies can still authenticate. Once a mobile client is built, this can be tightened to cookie-only in browser contexts.
+- `secure: isProd` means the cookie is sent over plain HTTP in local development. This is expected behaviour — enforcing `Secure` on localhost would break the dev workflow.
+- The NextAuth `authorize` call includes `withCredentials: true` so the `Set-Cookie` from the API login endpoint is forwarded to the browser during the NextAuth handshake.
 
 ## Summary (AI generated)
 
-Replaces the placeholder home page with a full marketing landing page matching the Dusk Glow aesthetic. The page is server-rendered (no client-side JS needed), responsive at mobile/tablet/desktop breakpoints, and links forward to the registration and login flows.
+Removes all client-side JWT storage. The token is now a server-set `HttpOnly; SameSite=Strict` cookie that JavaScript cannot read, eliminating the primary XSS session hijacking vector. The API auth plugin accepts both cookie and Bearer header so existing API client workflows are unaffected. The NextAuth session is simplified to a presence/absence signal with no sensitive material stored.
