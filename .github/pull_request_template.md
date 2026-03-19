@@ -1,19 +1,22 @@
 ## What does this PR do?
 
-Patches all known production CVEs in `api/` and `web/` as identified in the March 2026 security audit.
+Builds the registration page at `/register` with client-side validation and inline error handling.
 
-- Upgrades `fastify` in `api/` to fix GHSA-573f-x89g-hqp9 (malformed Content-Type bypass)
-- Upgrades `next` in `web/` from `16.1.6` to `16.2.0` to fix 5 moderate CVEs: GHSA-mq59-m269-xvcx (CSRF), GHSA-jcc7-9wpm-mj36 (HMR CSRF), GHSA-3x4c-7xq6-9pq8 (disk cache DoS), GHSA-h27x-g6w4-24gq (resume buffer DoS), GHSA-ggv3-7p47-pfv8 (HTTP request smuggling)
-- Both `npm audit --omit=dev` commands now return `0 vulnerabilities`
-- All TypeScript builds and Next.js production builds pass cleanly post-upgrade
+- Split layout: left branding panel (desktop), right form panel — matches Stitch UI mockup
+- Fields: Full Name, Email, Username, Password, Confirm Password
+- Client-side validation: email format, username min 3 chars + alphanumeric-only, password min 10 chars, passwords match
+- POST `/api/auth/register` via `api.ts` (HTTP-only cookie set by server)
+- After success: calls `signIn('credentials')` to establish NextAuth session, then redirects to `/onboarding`
+- Inline per-field errors; 409 conflicts surfaced as email or username field errors
+- Link to `/login` for existing users
 
 ## Related Issue
 
-Closes #65
+Closes #24
 
 ## Type of change
 
-- [ ] New feature
+- [x] New feature
 - [ ] Bug fix
 - [ ] Refactor
 - [x] DevOps / config
@@ -26,10 +29,10 @@ Closes #65
 
 ## Code Review Notes
 
-- `npm audit fix --force` was required for the Next.js upgrade since `16.2.0` is outside the `^16.1.6` range stated in `package.json`. The caret range in `package.json` has been updated accordingly via `package-lock.json`.
-- No source code changes — only `package-lock.json` files and `web/package.json` version range were modified.
-- The TypeScript API build and Next.js production build were both verified to pass before merging.
+- Password minimum is 10 chars (matches the API schema validation). Issue #24 spec says 8 — API rejects 8-char passwords so 10 wins.
+- Full Name field is UX-only and is not sent to the backend (API accepts email, username, password).
+- Registration makes two API calls: register + signIn (login) to ensure NextAuth session is created.
 
 ## Summary (AI generated)
 
-Resolves all 6 moderate-severity CVEs flagged by `npm audit` across the API and web services. The Fastify patch fixes a content-type validation bypass; the Next.js upgrade to 16.2.0 closes five vulnerabilities including two CSRF bypasses, two DoS vectors, and an HTTP request smuggling issue in rewrites. No application behaviour changes.
+Adds `/register` with a two-column Dusk Glow layout. Validates all fields client-side, registers via the Fastify API, establishes a NextAuth session, and routes new users to onboarding.
