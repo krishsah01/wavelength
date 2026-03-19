@@ -3,16 +3,42 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { User } from "../types/db";
 
+const registerSchema = {
+    body: {
+        type: 'object',
+        required: ['email', 'username', 'password'],
+        additionalProperties: false,
+        properties: {
+            email: { type: 'string', format: 'email', maxLength: 254 },
+            username: {
+                type: 'string',
+                minLength: 3,
+                maxLength: 30,
+                pattern: '^[a-zA-Z0-9_]+$',
+            },
+            password: { type: 'string', minLength: 10, maxLength: 128 },
+        },
+    },
+}
+
+const loginSchema = {
+    body: {
+        type: 'object',
+        required: ['email', 'password'],
+        additionalProperties: false,
+        properties: {
+            email: { type: 'string', format: 'email', maxLength: 254 },
+            password: { type: 'string', minLength: 1, maxLength: 128 },
+        },
+    },
+}
+
 export default async function authRoutes(app: FastifyInstance) {
-    app.post('/auth/register', async (request, reply) => {
+    app.post('/auth/register', { schema: registerSchema }, async (request, reply) => {
         const { email, username, password } = request.body as {
             email: string
             username: string
             password: string
-        }
-
-        if (!email || !username || !password) {
-            return reply.code(400).send({ error: 'Email, username and password are required' })
         }
 
         const existingEmail = await app.db.query<User>(
@@ -21,7 +47,7 @@ export default async function authRoutes(app: FastifyInstance) {
         )
 
         if (existingEmail.rows.length > 0) {
-            return reply.code(409).send({ error: 'Email already exists' })
+            return reply.code(409).send({ statusCode: 409, error: 'Conflict', message: 'Email already in use' })
         }
 
         const usernameExists = await app.db.query<User>(
@@ -30,7 +56,7 @@ export default async function authRoutes(app: FastifyInstance) {
         )
 
         if (usernameExists.rows.length > 0) {
-            return reply.code(409).send({ error: 'Username already exists' })
+            return reply.code(409).send({ statusCode: 409, error: 'Conflict', message: 'Username already in use' })
         }
 
         const password_hash = await bcrypt.hash(password, 10)
@@ -49,14 +75,11 @@ export default async function authRoutes(app: FastifyInstance) {
 
         return reply.code(201).send({ token, user, message: 'User successfully created' })
     })
-    app.post('/auth/login', async (request, reply) => {
+
+    app.post('/auth/login', { schema: loginSchema }, async (request, reply) => {
         const { email, password } = request.body as {
             email: string
             password: string
-        }
-
-        if (!email || !password) {
-            return reply.code(400).send({ error: 'Email and password are required' })
         }
 
         const checkEmail = await app.db.query<User>(
@@ -64,7 +87,7 @@ export default async function authRoutes(app: FastifyInstance) {
         )
 
         if (checkEmail.rows.length === 0) {
-            return reply.code(401).send({ error: 'Invalid email or password' })
+            return reply.code(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Invalid email or password' })
         }
 
         const user = checkEmail.rows[0]
@@ -72,7 +95,7 @@ export default async function authRoutes(app: FastifyInstance) {
         const verifyPassword = await bcrypt.compare(password, user.password_hash)
 
         if (!verifyPassword) {
-            return reply.code(401).send({ error: 'Invalid email or password' })
+            return reply.code(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Invalid email or password' })
         }
 
         const token = jwt.sign({ userId: user.id, email: user.email },
@@ -81,6 +104,7 @@ export default async function authRoutes(app: FastifyInstance) {
         )
         return reply.code(200).send({ token, message: 'Login successful' })
     })
+
     app.post('/auth/logout', { preHandler: app.authenticate }, async (request, reply) => {
         return reply.code(200).send({ message: 'Logged out successfully' })
     })

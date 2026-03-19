@@ -6,7 +6,16 @@ import authPlugin from './plugins/auth'
 import profileRoute from "./routes/profile";
 import { matchesRoute } from "./routes/matches";
 
-const app = Fastify({ logger: true })
+const app = Fastify({
+    logger: true,
+    ajv: {
+        customOptions: {
+            formats: {
+                email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+            },
+        },
+    },
+})
 
 // 1. cors first
 app.register(cors, {

@@ -3,6 +3,18 @@ import { UUID } from "node:crypto";
 import { ConversationStarter, Profile } from "../types/db";
 import { generateStarters } from "../services/starters";
 
+const UUID_PATTERN = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+
+const startersParamsSchema = {
+    params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+            id: { type: 'string', pattern: UUID_PATTERN },
+        },
+    },
+}
+
 export async function matchesRoute(app: FastifyInstance) {
     app.get("/matches", { preHandler: app.authenticate }, async (request, reply) => {
         const { userId } = request.user as
@@ -27,7 +39,7 @@ export async function matchesRoute(app: FastifyInstance) {
 
     })
 
-    app.get('/matches/:id/starters', { preHandler: app.authenticate }, async (request, reply) => {
+    app.get('/matches/:id/starters', { preHandler: app.authenticate, schema: startersParamsSchema }, async (request, reply) => {
         const { userId } = request.user as { userId: UUID }
         const { id: matchId } = request.params as { id: UUID }
 

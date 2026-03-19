@@ -1,17 +1,25 @@
 ## What does this PR do?
 
-Adds an Axios API client configuration with authentication and error handling interceptors. Updates the Next.js frontend color scheme to match standard background themes. Also adds `.dockerignore` to the `web` directory and introduces `next-env.d.ts` for Next.js environment types.
+Adds declarative JSON Schema validation to all Fastify routes so malformed payloads are rejected at the framework boundary before any business logic or database queries run.
+
+- `POST /api/auth/register`: enforces `email` (format: email, max 254 chars), `username` (3–30 chars, alphanumeric + underscore only), `password` (10–128 chars); `additionalProperties: false` strips unexpected fields
+- `POST /api/auth/login`: enforces `email` (format: email) and `password` presence; `additionalProperties: false`
+- `POST /api/profile`: enforces `bio` (50–5000 chars) via schema — removes the manual length check
+- `GET /profile/:id` and `GET /matches/:id/starters`: enforce UUID v4 format on `:id` param — non-UUID values return 400 before the DB is touched
+- AJV `formats.email` regex added to the Fastify instance options so `format: 'email'` is actually validated
+- All error responses normalized to `{ statusCode, error, message }` shape
+- Removed all manual `if (!email || !username)` guards now replaced by schema
 
 ## Related Issue
 
-Closes #20
+Closes #63
 
 ## Type of change
 
-- [x] New feature
+- [ ] New feature
 - [ ] Bug fix
-- [ ] Refactor
-- [x] DevOps / config
+- [x] Refactor
+- [ ] DevOps / config
 
 ## Checklist
 
@@ -21,10 +29,10 @@ Closes #20
 
 ## Code Review Notes
 
-- The Axios interceptor stores the JWT token in `localStorage` which is retrieved on every request. This implies client-side only usage since `localStorage` won't be available during Server-Side Rendering (SSR). Ensure that any SSR usage of this API instance manages tokens separately.
-- In the error interceptor, unauthenticated 401 responses redirect directly to `/login` via `window.location.href = '/login'`. Note that doing a full page reload will bypass Next.js client-side routing.
-- The color constants in `globals.css` were updated, and `layout.tsx` was adjusted to properly reflect the `bg-[#1a1208]` background and `text-[#ede8d8]` text colors.
+- `additionalProperties: false` on request bodies is important — without it, a client could send extra fields that silently pass through and potentially confuse handler logic.
+- The UUID pattern used is a standard v4 regex. Fastify validates it before the handler runs, so any non-UUID `:id` will get a 400 automatically.
+- The AJV `customOptions.formats` approach is the correct way to add custom format validators in Fastify v5 without adding the full `ajv-formats` package.
 
 ## Summary (AI generated)
 
-This branch introduces a configured Axios API client in `web/lib/api.ts` with a request interceptor to auto-attach authorization tokens from `localStorage`, and a response interceptor to redirect 401s to `/login`. It additionally modifies the Next.js `globals.css` and `layout.tsx` files to unify the dark mode color scheme context. Finally, it adds environment support files (`.dockerignore`, `next-env.d.ts`) typical for a Next.js setup.
+Replaces ad-hoc manual validation in route handlers with declarative JSON Schema definitions enforced by Fastify's built-in AJV integration. All request bodies and UUID path parameters are now validated before business logic executes, returning consistent 400 errors for invalid input. Error response shapes are normalized across all routes.
