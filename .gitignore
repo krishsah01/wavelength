@@ -1,4 +1,6 @@
 .env
+.mcp.json
 node_modules
 dist
 .next
+context/
