@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from '@fastify/cors'
 import rateLimit from '@fastify/rate-limit'
+import cookie from '@fastify/cookie'
 import dbPlugin from "./plugins/db";
 import authRoutes from "./routes/auth";
 import authPlugin from './plugins/auth'
@@ -9,10 +10,14 @@ import { matchesRoute } from "./routes/matches";
 
 const app = Fastify({ logger: true })
 
-// 1. cors first
+// 1. cors first — credentials: true required for HTTP-only cookie auth
 app.register(cors, {
-    origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000'
+    origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
+    credentials: true,
 })
+
+// 2. cookie parser (must be before auth plugin)
+app.register(cookie)
 
 // 2. global rate limit: 100 req/min per IP
 app.register(rateLimit, {
