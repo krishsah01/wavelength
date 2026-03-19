@@ -16,7 +16,7 @@
     "fastify": "^5.7.4",
     "fastify-plugin": "^5.1.0",
     "jsonwebtoken": "^9.0.3",
-    "pg": "^8.19.0",
+    "pg": "^8.20.0",
     "voyageai": "^0.2.1"
   },
   "devDependencies": {
