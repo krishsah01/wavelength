@@ -1,4 +1,12 @@
 node_modules
 .next
+.env
+.env.local
 .env*.local
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
 .git
+.gitignore
+README.md
