@@ -19,7 +19,7 @@ Closes #23
 - [x] New feature
 - [ ] Bug fix
 - [ ] Refactor
-- [ ] DevOps / config
+- [x] DevOps / config
 
 ## Checklist
 
