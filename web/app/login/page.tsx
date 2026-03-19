@@ -48,7 +48,7 @@ export default function LoginPage() {
           href="/register"
           className="text-sm px-4 py-2 rounded-full border border-[#e0a548] text-[#e0a548] hover:bg-[#e0a548] hover:text-[#0f0d0a] transition-all"
         >
-          Help
+          Sign up
         </Link>
       </nav>
 

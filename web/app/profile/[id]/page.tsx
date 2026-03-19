@@ -68,6 +68,7 @@ export default function ProfilePage() {
   const [startersError, setStartersError] = useState("");
 
   const [connectState, setConnectState] = useState<ConnectState>("idle");
+  const [connectError, setConnectError] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -89,10 +90,37 @@ export default function ProfilePage() {
       .then((res) => setStarters(res.data.starters ?? []))
       .catch(() => setStartersError("Couldn't load conversation starters."))
       .finally(() => setStartersLoading(false));
+
+    // Check existing connection status
+    api
+      .get("/api/connections")
+      .then((res) => {
+        const connections: { user_id: string }[] = res.data.connections ?? [];
+        const pending: { user_id: string }[] = res.data.pending_requests ?? [];
+        if (connections.some((c) => c.user_id === id)) {
+          setConnectState("connected");
+        } else if (pending.some((p) => p.user_id === id)) {
+          // They sent us a request — treat as pending
+          setConnectState("pending");
+        }
+      })
+      .catch(() => {/* ignore — connect button stays idle */});
   }, [id]);
 
-  function handleConnect() {
-    if (connectState === "idle") setConnectState("pending");
+  async function handleConnect() {
+    if (connectState !== "idle") return;
+    setConnectError("");
+    try {
+      await api.post("/api/connections", { receiver_id: id });
+      setConnectState("pending");
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 409) {
+        setConnectState("pending"); // Already sent
+      } else {
+        setConnectError("Couldn't send request. Try again.");
+      }
+    }
   }
 
   if (profileLoading) {
@@ -162,7 +190,7 @@ export default function ProfilePage() {
         {/* Connect button */}
         <button
           onClick={handleConnect}
-          disabled={connectState === "connected"}
+          disabled={connectState !== "idle"}
           className={`px-10 py-3 rounded-full font-semibold text-sm transition-all ${
             connectState === "idle"
               ? "bg-[#e0a548] text-[#0f0d0a] hover:bg-[#c8923a]"
@@ -177,6 +205,9 @@ export default function ProfilePage() {
             ? "Request Sent"
             : "Connected"}
         </button>
+        {connectError && (
+          <p className="text-red-400 text-xs mt-2">{connectError}</p>
+        )}
       </section>
 
       {/* Bio card */}
