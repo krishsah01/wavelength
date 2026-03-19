@@ -1,29 +1,23 @@
 ## What does this PR do?
 
-Adds explicit authorization checks on the two endpoints that were vulnerable to Broken Object-Level Authorization (BOLA/IDOR — OWASP API Security Top 10 #1).
+Builds the registration page at `/register` with client-side validation and inline error handling.
 
-**`GET /api/matches/:id/starters` — BOLA mitigation:**
-Before generating or returning conversation starters, the endpoint now verifies that `matchId` is actually in the requesting user's top-10 cosine similarity match results. If a user tries to request starters for an arbitrary UUID that is not their match, the server returns 403 and logs a warn-level security event. This prevents:
-- Scraping bios for arbitrary user pairs
-- Triggering Claude API calls for any user combination
-- Enumerating user profiles via the starters endpoint
-
-**`GET /api/profile/:id` — access policy documented (Option A):**
-Profile data (username, bio, join date) remains visible to all authenticated users. This is an intentional policy choice for a social discovery platform. The decision is documented in a comment directly in the route handler so future engineers know it was a deliberate decision, not an oversight.
-
-**Additional improvements in this PR:**
-- `GET /matches` now returns `user_id` in each match row so the frontend can resolve starters requests by user ID without additional lookups
-- UUID param schema added to `GET /matches/:id/starters` (in line with the schema-validation work from #63)
-- Error response shapes normalized to `{ statusCode, error, message }` on match/profile routes
+- Split layout: left branding panel (desktop), right form panel — matches Stitch UI mockup
+- Fields: Full Name, Email, Username, Password, Confirm Password
+- Client-side validation: email format, username min 3 chars + alphanumeric-only, password min 10 chars, passwords match
+- POST `/api/auth/register` via `api.ts` (HTTP-only cookie set by server)
+- After success: calls `signIn('credentials')` to establish NextAuth session, then redirects to `/onboarding`
+- Inline per-field errors; 409 conflicts surfaced as email or username field errors
+- Link to `/login` for existing users
 
 ## Related Issue
 
-Closes #64
+Closes #24
 
 ## Type of change
 
-- [ ] New feature
-- [x] Bug fix
+- [x] New feature
+- [ ] Bug fix
 - [ ] Refactor
 - [ ] DevOps / config
 
@@ -35,9 +29,10 @@ Closes #64
 
 ## Code Review Notes
 
-- The BOLA check runs a second cosine similarity query (the same one used by `GET /matches`). This adds one DB round-trip per uncached starters request. For a v1 app this is acceptable. If latency becomes a concern, the match list can be cached in Redis with a short TTL.
-- The warn-level log on BOLA attempts includes `userId` and `matchId` — no PII beyond identifiers. This enables security monitoring without leaking bio content.
+- Password minimum is 10 chars (matches the API schema validation). Issue #24 spec says 8 — API rejects 8-char passwords so 10 wins.
+- Full Name field is UX-only and is not sent to the backend (API accepts email, username, password).
+- Registration makes two API calls: register + signIn (login) to ensure NextAuth session is created.
 
 ## Summary (AI generated)
 
-Closes the BOLA vulnerability on the starters endpoint by verifying that the target user is in the requesting user's actual match list before serving or generating any starters. An unauthorized attempt returns 403 and is logged. The profile endpoint's open access policy is now explicitly documented as an intentional design decision rather than an unreviewed gap.
+Adds `/register` with a two-column Dusk Glow layout. Validates all fields client-side, registers via the Fastify API, establishes a NextAuth session, and routes new users to onboarding.
