@@ -17,7 +17,7 @@ const securityHeaders = [
       `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}`,
       "font-src 'self' https://fonts.gstatic.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "script-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
       "img-src 'self' data:",
       "frame-ancestors 'none'",
     ].join('; '),
