@@ -5,7 +5,7 @@ import { useState, FormEvent } from "react";
 import api from "@/lib/api";
 
 const MIN_CHARS = 50;
-const MAX_CHARS = 500;
+const MAX_CHARS = 5000;
 
 const PLACEHOLDER =
   "In the quiet resonance of the dusk, I found…\n\nTell the community who you are. What are you obsessed with lately? What do you spend your spare hours on? What's the last thing that made you lose track of time?";

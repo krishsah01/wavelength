@@ -143,18 +143,6 @@ export default function DashboardPage() {
           );
         })}
 
-        {/* Premium upsell */}
-        <div className="mt-auto mx-1 bg-[#1a1208] border border-[#2d1f1a] rounded-xl p-4">
-          <p className="text-[#e0a548] text-xs font-semibold tracking-wider uppercase mb-1">
-            Premium Rune
-          </p>
-          <p className="text-[#9a8870] text-xs leading-relaxed mb-3">
-            Unlock deep sentiment insights and unlimited matches.
-          </p>
-          <button className="w-full py-2 bg-[#e0a548] text-[#0f0d0a] text-xs font-semibold rounded-lg hover:bg-[#c8923a] transition-colors">
-            Upgrade Now
-          </button>
-        </div>
       </aside>
 
       {/* Main */}
@@ -166,20 +154,6 @@ export default function DashboardPage() {
             <p className="text-[#9a8870] text-sm mt-1">
               Handcrafted for your dusk-time frequencies
             </p>
-          </div>
-          <div className="flex gap-2">
-            {["Compatibility", "Nearby", "Nightly"].map((tab, i) => (
-              <button
-                key={tab}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                  i === 0
-                    ? "bg-[#e0a548]/10 border-[#e0a548]/30 text-[#e0a548]"
-                    : "border-[#2d1f1a] text-[#9a8870] hover:border-[#4a3828]"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
           </div>
         </div>
 
