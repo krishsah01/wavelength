@@ -199,8 +199,14 @@ export default function SettingsPage() {
             </div>
             <button
               onClick={async () => {
-                try { await api.post("/api/auth/logout"); } catch { /* ignore */ }
-                signOut({ callbackUrl: "/login" });
+                try {
+                  await api.post("/api/auth/logout");
+                } catch (error) {
+                  console.error("Failed to log out via API:", error);
+                  window.alert("We couldn't fully sign you out. Please try again.");
+                  return;
+                }
+                await signOut({ callbackUrl: "/login" });
               }}
               className="px-5 py-2 border border-[#2d1f1a] text-[#9a8870] text-sm rounded-full hover:border-[#4a3828] hover:text-[#ede8d8] transition-colors"
             >

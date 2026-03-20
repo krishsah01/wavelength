@@ -36,11 +36,17 @@ export default function LoginPage() {
     }
 
     // Establish the NextAuth session (for useSession / middleware checks).
-    await signIn("credentials", {
+    const result = await signIn("credentials", {
       email: form.email,
       password: form.password,
       redirect: false,
     });
+
+    if (result?.error) {
+      setLoading(false);
+      setError("Invalid email or password.");
+      return;
+    }
 
     setLoading(false);
     router.push("/dashboard");
