@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import Avatar from "@/components/Avatar";
 
 interface Match {
   user_id: string;
   username: string;
   bio: string;
+  avatar_url?: string | null;
   score: number;
 }
 
@@ -16,10 +19,6 @@ function scoreLabel(score: number) {
   if (score >= 0.85) return { label: "High", colour: "text-emerald-400 bg-emerald-400/10 border-emerald-400/30" };
   if (score >= 0.7)  return { label: "Good", colour: "text-[#e0a548] bg-[#e0a548]/10 border-[#e0a548]/30" };
   return              { label: "Moderate", colour: "text-[#9a8870] bg-[#9a8870]/10 border-[#9a8870]/20" };
-}
-
-function initials(username: string) {
-  return username.slice(0, 2).toUpperCase();
 }
 
 function MatchCard({ match }: { match: Match }) {
@@ -30,9 +29,7 @@ function MatchCard({ match }: { match: Match }) {
     <div className="bg-[#1a1208] border border-[#2d1f1a] rounded-2xl p-6 flex flex-col gap-4 hover:border-[#4a3828] transition-colors">
       {/* Score badge */}
       <div className="flex items-start justify-between">
-        <div className="w-14 h-14 rounded-full bg-[#2d1f1a] flex items-center justify-center text-[#e0a548] font-semibold text-lg">
-          {initials(match.username)}
-        </div>
+        <Avatar username={match.username} avatarUrl={match.avatar_url} size="md" />
         <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${colour}`}>
           {pct}% Match
         </span>
@@ -142,6 +139,14 @@ export default function DashboardPage() {
             </Link>
           );
         })}
+
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-[#9a8870] hover:text-red-400 hover:bg-red-400/5 mt-2"
+        >
+          <span className="text-base">↩</span>
+          Sign out
+        </button>
 
         {/* Premium upsell */}
         <div className="mt-auto mx-1 bg-[#1a1208] border border-[#2d1f1a] rounded-xl p-4">
