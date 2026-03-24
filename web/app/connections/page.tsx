@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import Avatar from "@/components/Avatar";
 
 interface PendingRequest {
   connection_id: string;
   user_id: string;
   username: string;
   bio: string;
+  avatar_url?: string | null;
   requested_at: string;
 }
 
@@ -17,11 +20,8 @@ interface Connection {
   user_id: string;
   username: string;
   bio: string;
+  avatar_url?: string | null;
   connected_at: string;
-}
-
-function initials(username: string) {
-  return username.slice(0, 2).toUpperCase();
 }
 
 function bioSnippet(bio: string) {
@@ -29,9 +29,11 @@ function bioSnippet(bio: string) {
 }
 
 const NAV_ITEMS = [
-  { label: "Connections", href: "/connections", icon: "⌘", active: true },
+  { label: "Dashboard",   href: "/dashboard",    icon: "⊞" },
+  { label: "Discover",    href: "/dashboard",    icon: "◎" },
   { label: "Messages",    href: "#",             icon: "◻" },
-  { label: "Discover",   href: "/dashboard",    icon: "◎" },
+  { label: "Connections", href: "/connections",  icon: "⌘", active: true },
+  { label: "Settings",    href: "/settings",     icon: "⊙" },
 ];
 
 export default function ConnectionsPage() {
@@ -128,7 +130,7 @@ export default function ConnectionsPage() {
               href={item.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                 item.active
-                  ? "bg-[#e0a548] text-[#0f0d0a] font-semibold"
+                  ? "bg-[#e0a548]/10 text-[#e0a548] border border-[#e0a548]/20"
                   : "text-[#9a8870] hover:text-[#ede8d8] hover:bg-[#1a1208]"
               }`}
             >
@@ -136,6 +138,14 @@ export default function ConnectionsPage() {
               {item.label}
             </Link>
           ))}
+
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-[#9a8870] hover:text-red-400 hover:bg-red-400/5 mt-2"
+          >
+            <span className="text-base">↩</span>
+            Sign out
+          </button>
 
           {/* Account section */}
           <div className="mt-auto mx-1 bg-[#1a1208] border border-[#2d1f1a] rounded-xl p-4">
@@ -214,9 +224,7 @@ export default function ConnectionsPage() {
                       <div key={req.connection_id} className="flex items-center gap-4 px-5 py-4">
                         {/* Avatar */}
                         <div className="relative shrink-0">
-                          <div className="w-10 h-10 rounded-full bg-[#2d1f1a] flex items-center justify-center text-[#e0a548] text-sm font-semibold">
-                            {initials(req.username)}
-                          </div>
+                          <Avatar username={req.username} avatarUrl={req.avatar_url} size="sm" />
                           <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#1a1208]" />
                         </div>
 
@@ -285,9 +293,7 @@ export default function ConnectionsPage() {
                         href={`/profile/${conn.user_id}`}
                         className="flex items-center gap-4 px-5 py-4 hover:bg-[#1f1510] transition-colors"
                       >
-                        <div className="w-10 h-10 rounded-full bg-[#2d1f1a] flex items-center justify-center text-[#e0a548] text-sm font-semibold shrink-0">
-                          {initials(conn.username)}
-                        </div>
+                        <Avatar username={conn.username} avatarUrl={conn.avatar_url} size="sm" className="shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-[#ede8d8]">{conn.username}</p>
                           <p className="text-xs text-[#9a8870] truncate">{bioSnippet(conn.bio)}</p>
