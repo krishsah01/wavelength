@@ -25,7 +25,7 @@ interface Connection {
 }
 
 function bioSnippet(bio: string) {
-  return bio ? bio.slice(0, 60).trimEnd() + (bio.length > 60 ? "…" : "") : "";
+  return bio ? bio.slice(0, 60).trimEnd() + (bio.length > 60 ? "…" : "") : "No bio yet";
 }
 
 const NAV_ITEMS = [

@@ -172,20 +172,6 @@ export default function DashboardPage() {
               Handcrafted for your dusk-time frequencies
             </p>
           </div>
-          <div className="flex gap-2">
-            {["Compatibility", "Nearby", "Nightly"].map((tab, i) => (
-              <button
-                key={tab}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                  i === 0
-                    ? "bg-[#e0a548]/10 border-[#e0a548]/30 text-[#e0a548]"
-                    : "border-[#2d1f1a] text-[#9a8870] hover:border-[#4a3828]"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Grid */}

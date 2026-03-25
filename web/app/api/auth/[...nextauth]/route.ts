@@ -12,8 +12,13 @@ const handler = NextAuth({
             },
             async authorize(credentials) {
                 try {
+                    // INTERNAL_API_URL is a server-side-only runtime env var (set in Docker
+                    // Compose) that points to the API on the internal Docker network.
+                    // NEXT_PUBLIC_API_URL is baked at build time and resolves for the browser,
+                    // but inside Docker it resolves to localhost which isn't the API container.
+                    const apiBase = process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL
                     const response = await axios.post(
-                        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
+                        `${apiBase}/api/auth/login`,
                         credentials,
                         // withCredentials forwards the Set-Cookie from the API
                         // so the browser receives the HttpOnly token cookie

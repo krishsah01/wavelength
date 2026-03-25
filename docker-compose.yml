@@ -28,13 +28,22 @@ services:
       VOYAGE_API_KEY: ${VOYAGE_API_KEY}
 
   web:
-    build: ./web
+    build:
+      context: ./web
+      args:
+        # Browser-side JS is baked at build time — use the host-accessible URL
+        NEXT_PUBLIC_API_URL: http://localhost:4000
     ports:
       - "3000:3000"
     depends_on:
       - api
     environment:
-      NEXT_PUBLIC_API_URL: http://api:4000
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      NEXTAUTH_URL: http://localhost:3000
+      
+      # Server-side-only: NextAuth authorize() uses this at runtime so it can reach the API
+      # on the internal Docker network (NEXT_PUBLIC_API_URL is baked at build time for the browser)
+      INTERNAL_API_URL: http://api:4000
 
 volumes:
   postgres_data:

@@ -114,7 +114,7 @@ export async function connectionsRoute(app: FastifyInstance) {
     app.get('/connections', { preHandler: app.authenticate }, async (request, reply) => {
         const { userId } = request.user as { userId: UUID }
 
-        const [accepted, pending] = await Promise.all([
+        const [accepted, pending, sent] = await Promise.all([
             // Accepted connections (either direction)
             app.db.query<{ connection_id: string; user_id: string; username: string; bio: string; connected_at: Date }>(
                 `SELECT c.id AS connection_id,
@@ -143,11 +143,26 @@ export async function connectionsRoute(app: FastifyInstance) {
                  ORDER BY c.created_at DESC`,
                 [userId]
             ),
+            // Sent requests where current user is the requester
+            app.db.query<{ connection_id: string; user_id: string; username: string; bio: string; requested_at: Date }>(
+                `SELECT c.id AS connection_id,
+                        u.id AS user_id,
+                        u.username,
+                        LEFT(p.bio, 150) AS bio,
+                        c.created_at AS requested_at
+                 FROM connections c
+                 JOIN users u ON u.id = c.receiver_id
+                 LEFT JOIN profiles p ON p.user_id = u.id
+                 WHERE c.requester_id = $1 AND c.status = 'pending'
+                 ORDER BY c.created_at DESC`,
+                [userId]
+            ),
         ])
 
         return reply.code(200).send({
             connections: accepted.rows,
             pending_requests: pending.rows,
+            sent_requests: sent.rows,
         })
     })
 }

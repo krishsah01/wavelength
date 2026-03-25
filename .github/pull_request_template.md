@@ -1,21 +1,24 @@
 ## What does this PR do?
 
-Adds an avatar upload step to the onboarding flow, making it a skippable two-step experience: bio entry (existing, Step 3) → avatar upload (new, Step 4).
+Post-QA bug fixes and polish found during Playwright E2E testing.
 
-- After the bio is saved successfully, the page transitions to a new avatar step (Step 4 of 5, 80% progress) without a full page navigation
-- The avatar step shows a large circular preview that doubles as the file picker trigger — displays the user's initials (fetched via `/api/profile/me`) before a photo is selected, then shows a live preview with a "Change" hover overlay once a file is picked
-- "Upload & Continue" POSTs the file as `multipart/form-data` to the existing `/api/profile/avatar` endpoint, then redirects to `/dashboard`
-- Users can skip the avatar step via "Skip for now" (inline button) or "Skip" (top-right nav), both routing directly to `/dashboard`
-- The bio step is unchanged in behaviour; state is lifted and scoped (`bioLoading`/`bioError` vs `avatarLoading`/`avatarError`) so the two steps don't interfere
+- **Auth cookie fix**: Login page now calls `POST /api/auth/login` browser-side before `signIn()` so the HTTP-only cookie is set in the browser (previously `signIn()` ran server-side only, leaving the browser without the cookie)
+- **Sign-out fix**: Settings sign-out now calls `POST /api/auth/logout` to clear the API cookie before calling NextAuth `signOut()` (previously the API cookie persisted after logout)
+- **Next.js middleware**: Added `web/middleware.ts` — protected routes (`/dashboard`, `/connections`, `/settings`, `/profile`, `/onboarding`) now 307-redirect unauthenticated users server-side; auth-only routes (`/login`, `/register`) redirect authenticated users to dashboard
+- **Starter card word-boundary split**: Fixed mid-word text split in profile page — the 60-char fallback now finds the last space to avoid cutting words
+- **Onboarding char limit**: Increased `MAX_CHARS` from 500 → 5000 to match the settings page limit
+- **Removed dead UI**: Removed non-functional "Compatibility / Nearby / Nightly" filter tabs and "Premium Rune / Upgrade Now" CTA from dashboard
+- **Connections bio placeholder**: Shows "No bio yet" instead of empty string when a connected user has no profile
+- **Docker + CSP**: Added `NEXT_PUBLIC_API_URL` build arg, `INTERNAL_API_URL` runtime env, `'unsafe-inline'` to CSP for Next.js hydration, `sent_requests` to connections API response
 
 ## Related Issue
 
-Closes #
+Closes #34, Closes #36, Closes #37
 
 ## Type of change
 
-- [x] New feature
-- [ ] Bug fix
+- [ ] New feature
+- [x] Bug fix
 - [ ] Refactor
 - [ ] DevOps / config
 
@@ -27,10 +30,10 @@ Closes #
 
 ## Code Review Notes
 
-- The backend's `POST /profile/avatar` intentionally rejects requests where no profile row exists yet (`UPDATE ... RETURNING` returns 0 rows → 404). This is enforced by ordering: bio must be saved before the avatar step is shown, so this constraint is naturally satisfied.
-- `URL.createObjectURL` is used for the local preview; this is not revoked on unmount. Since the component unmounts by navigating away, this is acceptable but could be cleaned up with a `useEffect` return if memory becomes a concern.
-- Username is fetched via a secondary `/api/profile/me` call after bio save purely for the initials preview. This is best-effort (wrapped in its own try/catch) — the avatar step works fine without it.
+- The auth cookie fix (login page calling API directly) means credentials are sent twice on login: once from the browser to the API (to set the cookie), and once through NextAuth server-side (to create the session). This is a known trade-off of the HTTP-only cookie + NextAuth dual-auth model.
+- The middleware uses `getToken` from `next-auth/jwt` which reads the NextAuth session cookie — this is independent from the API JWT cookie. Both must be valid for the user to be truly "logged in".
+- Removed filter tabs and premium CTA are pure dead UI — no backend or logic existed for them.
 
 ## Summary
 
-Converts the single-step onboarding page into a two-step flow by adding an optional, skippable avatar upload step after bio entry. Leverages the existing `/api/profile/avatar` backend endpoint and the shared `Avatar` component pattern.
+Fixes critical auth bugs discovered during Playwright E2E testing: the browser never received the API JWT cookie on login (only NextAuth session was set), and sign-out didn't clear the API cookie. Adds Next.js middleware for proper server-side route protection. Also removes non-functional UI elements and aligns onboarding/settings char limits.

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useState, FormEvent } from "react";
+import api from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,19 +22,28 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const result = await signIn("credentials", {
+    // Call the API directly so the browser receives the HTTP-only cookie.
+    // signIn() alone runs server-side and the cookie never reaches the browser.
+    try {
+      await api.post("/api/auth/login", {
+        email: form.email,
+        password: form.password,
+      });
+    } catch {
+      setLoading(false);
+      setError("Invalid email or password.");
+      return;
+    }
+
+    // Establish the NextAuth session (for useSession / middleware checks).
+    await signIn("credentials", {
       email: form.email,
       password: form.password,
       redirect: false,
     });
 
     setLoading(false);
-
-    if (result?.error) {
-      setError("Invalid email or password.");
-    } else {
-      router.push("/dashboard");
-    }
+    router.push("/dashboard");
   }
 
   return (

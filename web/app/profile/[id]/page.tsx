@@ -17,8 +17,13 @@ function StarterCard({ text, index }: { text: string; index: number }) {
   // Use first sentence or ~60 chars as a "title", rest as body
   const dotIndex = text.indexOf(". ");
   const hasNaturalBreak = dotIndex > 0 && dotIndex < 80;
-  const title = hasNaturalBreak ? text.slice(0, dotIndex) : text.slice(0, 55).trimEnd();
-  const body = hasNaturalBreak ? text.slice(dotIndex + 2) : text.slice(55).trimStart();
+  const rawTitle = hasNaturalBreak ? text.slice(0, dotIndex) : (() => {
+    const cut = text.slice(0, 60);
+    const lastSpace = cut.lastIndexOf(" ");
+    return lastSpace > 20 ? cut.slice(0, lastSpace) : cut;
+  })();
+  const title = rawTitle;
+  const body = hasNaturalBreak ? text.slice(dotIndex + 2) : text.slice(title.length).trimStart();
 
   return (
     <div className="bg-[#1a1208] border border-[#2d1f1a] rounded-2xl p-6 flex flex-col gap-3 hover:border-[#4a3828] transition-colors relative">
@@ -97,10 +102,11 @@ export default function ProfilePage() {
       .then((res) => {
         const connections: { user_id: string }[] = res.data.connections ?? [];
         const pending: { user_id: string }[] = res.data.pending_requests ?? [];
+        const sent: { user_id: string }[] = res.data.sent_requests ?? [];
         if (connections.some((c) => c.user_id === id)) {
           setConnectState("connected");
-        } else if (pending.some((p) => p.user_id === id)) {
-          // They sent us a request — treat as pending
+        } else if (pending.some((p) => p.user_id === id) || sent.some((s) => s.user_id === id)) {
+          // They sent us a request, or we sent them one — treat as pending
           setConnectState("pending");
         }
       })
