@@ -1,4 +1,24 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Wavelength — Find People Who Share Your Exact Interests",
+  description:
+    "Tired of surface-level connections? Wavelength uses AI to match you with people who are into the same specific, niche things you are. No algorithms. No engagement bait. Just real resonance.",
+  keywords: [
+    "find people with same interests",
+    "AI friend finder",
+    "meet people with niche hobbies",
+    "interest-based social app",
+    "find friends with unusual interests",
+    "niche interest matchmaker",
+  ],
+  openGraph: {
+    title: "Wavelength — Find People Who Share Your Exact Interests",
+    description:
+      "AI-powered matching for people with niche, specific, and unusual interests. Write about what you love — we find who else loves it.",
+  },
+};
 
 const stats = [
   { value: "50k+", label: "Wavelengths" },

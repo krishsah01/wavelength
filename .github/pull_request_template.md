@@ -20,7 +20,7 @@ Closes #34, Closes #36, Closes #37
 - [ ] New feature
 - [x] Bug fix
 - [ ] Refactor
-- [x] DevOps / config
+- [ ] DevOps / config
 
 ## Checklist
 
@@ -34,6 +34,6 @@ Closes #34, Closes #36, Closes #37
 - The middleware uses `getToken` from `next-auth/jwt` which reads the NextAuth session cookie — this is independent from the API JWT cookie. Both must be valid for the user to be truly "logged in".
 - Removed filter tabs and premium CTA are pure dead UI — no backend or logic existed for them.
 
-## Summary (AI generated)
+## Summary
 
 Fixes critical auth bugs discovered during Playwright E2E testing: the browser never received the API JWT cookie on login (only NextAuth session was set), and sign-out didn't clear the API cookie. Adds Next.js middleware for proper server-side route protection. Also removes non-functional UI elements and aligns onboarding/settings char limits.
