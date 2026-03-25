@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Newsreader, Inter } from "next/font/google";
+import AppShell from "@/components/AppShell";
 import "./globals.css";
 
 const newsreader = Newsreader({
@@ -81,7 +82,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(appStructuredData) }}
         />
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

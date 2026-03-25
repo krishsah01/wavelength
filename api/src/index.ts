@@ -14,6 +14,21 @@ import { connectionsRoute } from "./routes/connections";
 import { messagesRoute } from "./routes/messages";
 
 const isProd = process.env.NODE_ENV === 'production'
+const REQUIRED_ENV_VARS = ["JWT_SECRET", "DATABASE_URL"];
+const OPTIONAL_ENV_VARS = ["ANTHROPIC_API_KEY", "VOYAGE_API_KEY"];
+
+for (const key of REQUIRED_ENV_VARS) {
+    if (!process.env[key]) {
+        console.error(`FATAL: missing required env var ${key}`);
+        process.exit(1);
+    }
+}
+
+for (const key of OPTIONAL_ENV_VARS) {
+    if (!process.env[key]) {
+        console.warn(`WARN: missing optional env var ${key} (some AI features may be disabled)`);
+    }
+}
 
 const app = Fastify({
     logger: {
@@ -45,7 +60,13 @@ app.register(cors, {
 
 // 2. security headers
 app.register(helmet, {
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'none'"],
+            frameAncestors: ["'none'"],
+            baseUri: ["'none'"],
+        },
+    },
     hsts: isProd ? { maxAge: 63072000, includeSubDomains: true } : false,
 })
 
@@ -78,7 +99,11 @@ app.register(rateLimit, {
 })
 
 // 4a. websocket support (real-time messaging)
-app.register(websocket)
+app.register(websocket, {
+    options: {
+        maxPayload: 1024,
+    },
+})
 
 //register plugins
 app.register(dbPlugin)

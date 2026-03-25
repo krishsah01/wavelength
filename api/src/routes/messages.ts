@@ -5,6 +5,13 @@ import { Message } from "../types/db";
 
 const UUID_PATTERN =
   "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
+const ISO_8601_PATTERN = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$";
+const WS_MAX_CONNECTIONS_PER_ROOM = 10;
+const WS_MAX_MESSAGES_PER_WINDOW = 30;
+const WS_WINDOW_MS = 10_000;
+const WS_PING_INTERVAL_MS = 30_000;
+const HTTP_READ_MAX_REQUESTS_PER_WINDOW = 30;
+const HTTP_READ_WINDOW_MS = 10_000;
 
 const getMessagesSchema = {
   params: {
@@ -18,7 +25,7 @@ const getMessagesSchema = {
     type: "object",
     additionalProperties: false,
     properties: {
-      before: { type: "string" }, // ISO timestamp
+      before: { type: "string", pattern: ISO_8601_PATTERN },
       limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
     },
   },
@@ -42,7 +49,28 @@ const postMessageSchema = {
   },
 };
 
-type WsConn = { socket: { send: (data: string) => void; close: () => void; on: (ev: string, cb: (...args: any[]) => void) => void } };
+const readMessagesParamsSchema = {
+  params: {
+    type: "object",
+    required: ["connectionId"],
+    properties: {
+      connectionId: { type: "string", pattern: UUID_PATTERN },
+    },
+  },
+};
+
+type WsSocket = {
+  send: (data: string) => void;
+  close: (code?: number, data?: string) => void;
+  on: (ev: string, cb: (...args: any[]) => void) => void;
+  ping?: () => void;
+};
+
+type WsClient = {
+  socket: WsSocket;
+  userId: string;
+  frameTimestamps: number[];
+};
 
 function safeJsonParse<T>(raw: string): T | null {
   try {
@@ -80,19 +108,36 @@ function authenticateWs(request: any): { userId: string; email?: string } | null
 }
 
 export async function messagesRoute(app: FastifyInstance) {
-  const rooms = new Map<string, Set<any>>();
+  const rooms = new Map<string, Set<WsClient>>();
 
-  function broadcast(connectionId: string, payload: unknown) {
-    const sockets = rooms.get(connectionId);
-    if (!sockets) return;
+  function closeSocket(socket: WsSocket, code = 1008, reason = "Policy violation") {
+    try {
+      socket.close(code, reason);
+    } catch {
+      // ignore close errors
+    }
+  }
+
+  function isWsFrameRateAllowed(client: WsClient) {
+    const now = Date.now();
+    client.frameTimestamps = client.frameTimestamps.filter((ts) => now - ts < WS_WINDOW_MS);
+    client.frameTimestamps.push(now);
+    return client.frameTimestamps.length <= WS_MAX_MESSAGES_PER_WINDOW;
+  }
+
+  function broadcast(connectionId: string, payload: unknown, excludeUserId?: string) {
+    const clients = rooms.get(connectionId);
+    if (!clients) return;
     const raw = JSON.stringify(payload);
-    for (const ws of sockets) {
+    for (const client of clients) {
+      if (excludeUserId && client.userId === excludeUserId) continue;
       try {
-        ws.send(raw);
+        client.socket.send(raw);
       } catch {
-        // ignore broken sockets
+        clients.delete(client);
       }
     }
+    if (clients.size === 0) rooms.delete(connectionId);
   }
 
   // GET /api/messages/:connectionId — history (cursor pagination)
@@ -154,9 +199,45 @@ export async function messagesRoute(app: FastifyInstance) {
       );
 
       const message = inserted.rows[0];
-      broadcast(String(connectionId), { type: "message", message });
+      broadcast(String(connectionId), { type: "message", message }, String(userId));
 
       return reply.code(201).send({ message });
+    }
+  );
+
+  // PATCH /api/messages/:connectionId/read — mark all received messages as read
+  app.patch(
+    "/messages/:connectionId/read",
+    {
+      preHandler: app.authenticate,
+      schema: readMessagesParamsSchema,
+      config: {
+        rateLimit: {
+          max: HTTP_READ_MAX_REQUESTS_PER_WINDOW,
+          timeWindow: HTTP_READ_WINDOW_MS,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { userId } = request.user as { userId: UUID };
+      const { connectionId } = request.params as { connectionId: UUID };
+
+      const allowed = await verifyConnectionAccess(app, connectionId, userId);
+      if (!allowed) {
+        return reply.code(404).send({ statusCode: 404, error: "Not Found", message: "Conversation not found" });
+      }
+
+      const updated = await app.db.query<{ id: string }>(
+        `UPDATE messages
+         SET is_read = true
+         WHERE connection_id = $1
+           AND sender_id != $2
+           AND is_read = false
+         RETURNING id`,
+        [connectionId, userId]
+      );
+
+      return reply.code(200).send({ updatedCount: updated.rowCount ?? 0 });
     }
   );
 
@@ -186,34 +267,56 @@ export async function messagesRoute(app: FastifyInstance) {
 
     const roomKey = String(connectionId);
     if (!rooms.has(roomKey)) rooms.set(roomKey, new Set());
-    rooms.get(roomKey)!.add(connection.socket);
+    const roomClients = rooms.get(roomKey)!;
+    if (roomClients.size >= WS_MAX_CONNECTIONS_PER_ROOM) {
+      closeSocket(connection.socket, 1008, "Too many active connections");
+      return;
+    }
+
+    const client: WsClient = { socket: connection.socket, userId: auth.userId, frameTimestamps: [] };
+    roomClients.add(client);
 
     connection.socket.on("close", () => {
       const set = rooms.get(roomKey);
       if (!set) return;
-      set.delete(connection.socket);
+      set.delete(client);
       if (set.size === 0) rooms.delete(roomKey);
     });
 
-    // Optional: allow sending over WS as well (clients can also use the REST POST)
-    connection.socket.on("message", async (raw: any) => {
-      const text = typeof raw === "string" ? raw : raw?.toString?.();
-      if (!text) return;
-      const payload = safeJsonParse<{ type?: string; content?: string }>(text);
-      if (!payload || payload.type !== "message" || typeof payload.content !== "string") return;
-      const content = payload.content.trim();
-      if (!content || content.length > 1000) return;
+    // Receive-only socket path. Message creation happens via REST POST.
+    connection.socket.on("message", (raw: any) => {
+      try {
+        if (!isWsFrameRateAllowed(client)) {
+          closeSocket(connection.socket, 1008, "Rate limit exceeded");
+          return;
+        }
 
-      const inserted = await app.db.query<Message>(
-        `INSERT INTO messages (connection_id, sender_id, content)
-         VALUES ($1, $2, $3)
-         RETURNING id, connection_id, sender_id, content, is_read, created_at`,
-        [connectionId, auth.userId, content]
-      );
-
-      const message = inserted.rows[0];
-      broadcast(roomKey, { type: "message", message });
+        const text = typeof raw === "string" ? raw : raw?.toString?.();
+        if (!text) return;
+        const payload = safeJsonParse<{ type?: string }>(text);
+        if (!payload) return;
+        if (payload.type === "ping") {
+          connection.socket.send(JSON.stringify({ type: "pong" }));
+        }
+      } catch {
+        closeSocket(connection.socket, 1011, "Unexpected error");
+      }
     });
   });
+
+  setInterval(() => {
+    for (const clients of rooms.values()) {
+      for (const client of clients) {
+        try {
+          client.socket.ping?.();
+        } catch {
+          clients.delete(client);
+        }
+      }
+    }
+    for (const [roomKey, clients] of rooms.entries()) {
+      if (clients.size === 0) rooms.delete(roomKey);
+    }
+  }, WS_PING_INTERVAL_MS).unref();
 }
 

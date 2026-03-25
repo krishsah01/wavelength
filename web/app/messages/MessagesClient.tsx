@@ -24,13 +24,7 @@ interface MessageRow {
   created_at: string;
 }
 
-const NAV_ITEMS = [
-  { label: "Dashboard", href: "/dashboard", icon: "⊞" },
-  { label: "Discover", href: "/dashboard", icon: "◎" },
-  { label: "Messages", href: "/messages", icon: "◻" },
-  { label: "Connections", href: "/connections", icon: "⌘" },
-  { label: "Settings", href: "/settings", icon: "⊙" },
-];
+
 
 function wsBaseFromApiBase(apiBase: string | undefined) {
   const base = apiBase?.trim();
@@ -39,6 +33,9 @@ function wsBaseFromApiBase(apiBase: string | undefined) {
     if (base.startsWith("http://")) return base.replace(/^http:\/\//, "ws://");
   }
   if (typeof window !== "undefined") {
+    if (window.location.protocol === "https:") {
+      return `wss://${window.location.hostname}`;
+    }
     return `ws://${window.location.hostname}:4000`;
   }
   return "ws://localhost:4000";
@@ -56,11 +53,16 @@ export default function MessagesClient() {
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [messagesError, setMessagesError] = useState("");
+  const [reconnecting, setReconnecting] = useState(false);
 
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimerRef = useRef<number | null>(null);
+  const shouldReconnectRef = useRef(true);
+  const reconnectAttemptsRef = useRef(0);
+  const messageIdsRef = useRef<Set<string>>(new Set());
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const wsBase = useMemo(() => wsBaseFromApiBase(process.env.NEXT_PUBLIC_API_URL), []);
@@ -87,12 +89,21 @@ export default function MessagesClient() {
 
     setLoadingMessages(true);
     setMessagesError("");
+    messageIdsRef.current.clear();
 
     api
       .get(`/api/messages/${selectedConnectionId}?limit=50`)
-      .then((res) => setMessages((res.data.messages ?? []) as MessageRow[]))
+      .then((res) => {
+        const loaded = (res.data.messages ?? []) as MessageRow[];
+        for (const m of loaded) messageIdsRef.current.add(m.id);
+        setMessages(loaded);
+      })
       .catch(() => setMessagesError("Could not load messages."))
       .finally(() => setLoadingMessages(false));
+
+    void api.patch(`/api/messages/${selectedConnectionId}/read`).catch(() => {
+      // Best-effort read receipt update.
+    });
   }, [selectedConnectionId]);
 
   useEffect(() => {
@@ -103,30 +114,67 @@ export default function MessagesClient() {
       wsRef.current = null;
     }
 
-    const wsUrl = `${wsBase}/api/ws?connectionId=${encodeURIComponent(selectedConnectionId)}`;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+    shouldReconnectRef.current = true;
 
-    ws.onmessage = (evt) => {
-      const payload = (() => {
+    const connect = () => {
+      if (!shouldReconnectRef.current) return;
+      const wsUrl = `${wsBase}/api/ws?connectionId=${encodeURIComponent(selectedConnectionId)}`;
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        reconnectAttemptsRef.current = 0;
+        setReconnecting(false);
+      };
+
+      ws.onmessage = (evt) => {
+        const payload = (() => {
+          try {
+            return JSON.parse(evt.data);
+          } catch {
+            return null;
+          }
+        })();
+
+        if (payload?.type === "message" && payload?.message) {
+          const msg = payload.message as MessageRow;
+          if (msg.connection_id === selectedConnectionId && !messageIdsRef.current.has(msg.id)) {
+            messageIdsRef.current.add(msg.id);
+            setMessages((prev) => [...prev, msg]);
+          }
+        }
+      };
+
+      ws.onclose = () => {
+        wsRef.current = null;
+        if (!shouldReconnectRef.current) return;
+        const attempt = reconnectAttemptsRef.current++;
+        const delay = Math.min(1000 * 2 ** attempt, 30_000);
+        setReconnecting(true);
+        reconnectTimerRef.current = window.setTimeout(connect, delay);
+      };
+
+      ws.onerror = () => {
         try {
-          return JSON.parse(evt.data);
+          ws.close();
         } catch {
-          return null;
+          // ignore
         }
-      })();
-
-      if (payload?.type === "message" && payload?.message) {
-        const msg = payload.message as MessageRow;
-        if (msg.connection_id === selectedConnectionId) {
-          setMessages((prev) => [...prev, msg]);
-        }
-      }
+      };
     };
 
+    connect();
+
     return () => {
+      shouldReconnectRef.current = false;
+      setReconnecting(false);
+      if (reconnectTimerRef.current !== null) {
+        window.clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
       try {
-        ws.close();
+        wsRef.current?.close();
+        wsRef.current = null;
       } catch {
         // ignore
       }
@@ -148,7 +196,10 @@ export default function MessagesClient() {
     try {
       const res = await api.post(`/api/messages/${selected.connection_id}`, { content });
       const msg = res.data.message as MessageRow | undefined;
-      if (msg) setMessages((prev) => [...prev, msg]);
+      if (msg && !messageIdsRef.current.has(msg.id)) {
+        messageIdsRef.current.add(msg.id);
+        setMessages((prev) => [...prev, msg]);
+      }
     } catch {
       setMessagesError("Could not send message. Please try again.");
       setDraft(content);
@@ -158,44 +209,12 @@ export default function MessagesClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0d0a] flex">
-      <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-[#2d1f1a] py-6 px-4 gap-1">
-        <div className="flex items-center gap-2 px-3 mb-8">
-          <span className="text-[#e0a548] text-xl">≋</span>
-          <span className="font-semibold tracking-wide text-[#ede8d8] text-sm">Wavelength</span>
-        </div>
-
-        {NAV_ITEMS.map((item) => {
-          const active = item.href === "/messages";
-          return (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                active
-                  ? "bg-[#e0a548]/10 text-[#e0a548] border border-[#e0a548]/20"
-                  : "text-[#9a8870] hover:text-[#ede8d8] hover:bg-[#1a1208]"
-              }`}
-            >
-              <span className="text-base">{item.icon}</span>
-              {item.label}
-            </Link>
-          );
-        })}
-
-        <div className="mt-auto mx-1 bg-[#1a1208] border border-[#2d1f1a] rounded-xl p-4">
-          <p className="text-[#9a8870] text-xs font-semibold tracking-wider uppercase mb-2">Tip</p>
-          <p className="text-[#4a3828] text-xs leading-relaxed">
-            Try opening with an AI starter from their profile to break the ice.
-          </p>
-        </div>
-      </aside>
-
-      <main className="flex-1 min-w-0 px-4 py-6 md:px-10 md:py-8">
+    <main className="flex-1 min-w-0 px-4 py-6 md:px-10 md:py-8 pb-24 md:pb-8">
         <div className="flex items-start justify-between mb-6">
           <div>
             <h1 className="text-2xl font-semibold text-[#ede8d8]">Messages</h1>
             <p className="text-[#9a8870] text-sm mt-1">Keep the signal warm.</p>
+            {reconnecting && <p className="text-[#e0a548] text-xs mt-1">Reconnecting to live updates...</p>}
           </div>
         </div>
 
@@ -337,8 +356,6 @@ export default function MessagesClient() {
             </div>
           </section>
         </div>
-      </main>
-    </div>
+    </main>
   );
 }
-

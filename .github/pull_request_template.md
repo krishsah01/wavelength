@@ -1,21 +1,18 @@
 ## What does this PR do?
 
-Implements the end-to-end direct messaging feature between connected users.
-- Adds a `messages` table with strict connection constraints (IDOR prevention) and 1000-character payload limits.
-- Creates REST endpoints (`GET /api/messages/:connectionId` and `POST /api/messages/:connectionId`) for paginated history and fallback sending.
-- Implements secure, authenticated WebSocket channels (`/api/ws`) for real-time bidirectional communication tightly bound to specific connections.
-- Adds the `MessagesClient.tsx` frontend React layout for chatting natively in the browser.
+Hardens the messaging stack for production use by closing key security and reliability gaps in the REST + WebSocket flow.
+It adds stricter validation and guardrails on the API/DB layer, introduces safer websocket lifecycle handling and abuse controls, and updates the messaging UI to recover from disconnects and avoid duplicate message rendering.
 
 ## Related Issue
 
-Closes #<issue_number>
+Closes #114
 
 ## Type of change
 
-- [x] New feature
-- [ ] Bug fix
-- [ ] Refactor
-- [ ] DevOps / config
+- [ ] New feature
+- [x] Bug fix
+- [x] Refactor
+- [x] DevOps / config
 
 ## Checklist
 
@@ -25,10 +22,12 @@ Closes #<issue_number>
 
 ## Code Review Notes
 
-- Security: The backend still requires server-side HTML sanitization (e.g., `DOMPurify`) to aggressively sanitize payloads (React's default escaping protects the front-end, but Defense-in-Depth is necessary).
-- Missing Rate Limiting: There is currently no strict throttling on WebSocket message broadcasts. 
-- UI: Unmatching/Blocking UI needs to be added so users can cleanly trigger the database `ON DELETE CASCADE`.
+- Websocket message creation over WS frames was removed; sending is now REST-only to reduce attack surface and simplify controls.
+- Added per-room connection cap and per-socket frame throttling to mitigate abuse/DoS patterns.
+- Startup env validation now fails fast on required runtime vars (`JWT_SECRET`, `DATABASE_URL`) and warns for optional AI keys.
+- Added `PATCH /api/messages/:connectionId/read` and best-effort read-mark call in the client.
+- `AppShell` centralizes shared nav/layout for app pages (`dashboard`, `connections`, `messages`) and removes duplicated shell markup across pages.
 
 ## Summary
 
-This PR ships the data models, real-time WebSocket infrastructure, and frontend architecture required for real-time messaging between accepted Wavelength connections.
+This PR secures the messaging feature for production by improving input validation, websocket safety, runtime configuration checks, and client resilience while preserving current UX and route behavior.
