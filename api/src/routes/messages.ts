@@ -10,6 +10,8 @@ const WS_MAX_CONNECTIONS_PER_ROOM = 10;
 const WS_MAX_MESSAGES_PER_WINDOW = 30;
 const WS_WINDOW_MS = 10_000;
 const WS_PING_INTERVAL_MS = 30_000;
+const HTTP_READ_MAX_REQUESTS_PER_WINDOW = 30;
+const HTTP_READ_WINDOW_MS = 10_000;
 
 const getMessagesSchema = {
   params: {
@@ -206,7 +208,16 @@ export async function messagesRoute(app: FastifyInstance) {
   // PATCH /api/messages/:connectionId/read — mark all received messages as read
   app.patch(
     "/messages/:connectionId/read",
-    { preHandler: app.authenticate, schema: readMessagesParamsSchema },
+    {
+      preHandler: app.authenticate,
+      schema: readMessagesParamsSchema,
+      config: {
+        rateLimit: {
+          max: HTTP_READ_MAX_REQUESTS_PER_WINDOW,
+          timeWindow: HTTP_READ_WINDOW_MS,
+        },
+      },
+    },
     async (request, reply) => {
       const { userId } = request.user as { userId: UUID };
       const { connectionId } = request.params as { connectionId: UUID };
