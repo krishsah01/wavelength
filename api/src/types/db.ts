@@ -10,6 +10,7 @@ export interface Profile {
     id: string
     user_id: string
     bio: string
+    avatar_url?: string | null
     embedding: number[]
     updated_at: Date
 }
@@ -28,5 +29,14 @@ export interface ConversationStarter {
     user_b_id: string
     starters_a_to_b: string[]
     starters_b_to_a: string[]
+    created_at: Date
+}
+
+export interface Message {
+    id: string
+    connection_id: string
+    sender_id: string
+    content: string
+    is_read: boolean
     created_at: Date
 }

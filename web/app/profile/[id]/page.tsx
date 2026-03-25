@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import Avatar from "@/components/Avatar";
 
 interface Profile {
   username: string;
   bio: string;
+  avatar_url?: string | null;
   created_at: string;
 }
 
@@ -52,10 +54,6 @@ function SkeletonStarter() {
       </div>
     </div>
   );
-}
-
-function initials(username: string) {
-  return username.slice(0, 2).toUpperCase();
 }
 
 type ConnectState = "idle" | "pending" | "connected";
@@ -180,9 +178,7 @@ export default function ProfilePage() {
       <section className="max-w-xl mx-auto px-6 pt-12 pb-8 text-center">
         {/* Avatar */}
         <div className="relative inline-block mb-6">
-          <div className="w-24 h-24 rounded-full bg-[#2d1f1a] border-2 border-[#e0a548]/30 flex items-center justify-center text-[#e0a548] text-3xl font-semibold mx-auto">
-            {initials(profile.username)}
-          </div>
+          <Avatar username={profile.username} avatarUrl={profile.avatar_url} size="lg" />
           <span className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#0f0d0a]" />
         </div>
 
@@ -193,24 +189,35 @@ export default function ProfilePage() {
         <p className="text-[#e0a548] text-sm mb-1">@{profile.username}</p>
         <p className="text-[#4a3828] text-xs mb-6">Member since {joinYear}</p>
 
-        {/* Connect button */}
-        <button
-          onClick={handleConnect}
-          disabled={connectState !== "idle"}
-          className={`px-10 py-3 rounded-full font-semibold text-sm transition-all ${
-            connectState === "idle"
-              ? "bg-[#e0a548] text-[#0f0d0a] hover:bg-[#c8923a]"
+        {/* Connect / Message actions */}
+        <div className="flex items-center justify-center gap-3">
+          <button
+            onClick={handleConnect}
+            disabled={connectState !== "idle"}
+            className={`px-10 py-3 rounded-full font-semibold text-sm transition-all ${
+              connectState === "idle"
+                ? "bg-[#e0a548] text-[#0f0d0a] hover:bg-[#c8923a]"
+                : connectState === "pending"
+                ? "bg-[#e0a548]/20 text-[#e0a548] border border-[#e0a548]/30 cursor-default"
+                : "bg-emerald-400/10 text-emerald-400 border border-emerald-400/30 cursor-default"
+            }`}
+          >
+            {connectState === "idle"
+              ? "Connect"
               : connectState === "pending"
-              ? "bg-[#e0a548]/20 text-[#e0a548] border border-[#e0a548]/30 cursor-default"
-              : "bg-emerald-400/10 text-emerald-400 border border-emerald-400/30 cursor-default"
-          }`}
-        >
-          {connectState === "idle"
-            ? "Connect"
-            : connectState === "pending"
-            ? "Request Sent"
-            : "Connected"}
-        </button>
+              ? "Request Sent"
+              : "Connected"}
+          </button>
+
+          {connectState === "connected" && (
+            <Link
+              href={`/messages?with=${id}`}
+              className="px-8 py-3 rounded-full font-semibold text-sm transition-colors bg-[#e0a548]/10 text-[#e0a548] border border-[#e0a548]/20 hover:bg-[#e0a548]/20"
+            >
+              Message
+            </Link>
+          )}
+        </div>
         {connectError && (
           <p className="text-red-400 text-xs mt-2">{connectError}</p>
         )}
@@ -271,7 +278,7 @@ export default function ProfilePage() {
         {[
           { label: "Home", href: "/dashboard", icon: "⊞" },
           { label: "Explore", href: "/dashboard", icon: "◎" },
-          { label: "Chat", href: "#", icon: "◻" },
+          { label: "Chat", href: "/messages", icon: "◻" },
           { label: "Profile", href: "#", icon: "◉", active: true },
         ].map((item) => (
           <Link

@@ -28,7 +28,7 @@ export async function matchesRoute(app: FastifyInstance) {
         }
 
         const similarityCheck = await app.db.query<Profile>(
-            'SELECT u.id AS user_id, u.username, LEFT(p.bio, 150) AS bio, ROUND((1 - (p.embedding <=> $1::vector))::numeric, 2) AS score FROM profiles p JOIN users u ON u.id = p.user_id WHERE p.user_id != $2 ORDER BY p.embedding <=> $1::vector LIMIT 10',
+            'SELECT u.id AS user_id, u.username, LEFT(p.bio, 150) AS bio, p.avatar_url, ROUND((1 - (p.embedding <=> $1::vector))::numeric, 2) AS score FROM profiles p JOIN users u ON u.id = p.user_id WHERE p.user_id != $2 ORDER BY p.embedding <=> $1::vector LIMIT 10',
             [embedding.rows[0].embedding, userId]
         )
 

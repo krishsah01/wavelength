@@ -55,7 +55,7 @@ Closes #<issue_number>
 
 [notes]
 
-## Summary (AI generated)
+## Summary
 
 [summary]
 ```

@@ -116,11 +116,12 @@ export async function connectionsRoute(app: FastifyInstance) {
 
         const [accepted, pending, sent] = await Promise.all([
             // Accepted connections (either direction)
-            app.db.query<{ connection_id: string; user_id: string; username: string; bio: string; connected_at: Date }>(
+            app.db.query<{ connection_id: string; user_id: string; username: string; bio: string; avatar_url: string | null; connected_at: Date }>(
                 `SELECT c.id AS connection_id,
                         u.id AS user_id,
                         u.username,
                         LEFT(p.bio, 150) AS bio,
+                        p.avatar_url,
                         c.created_at AS connected_at
                  FROM connections c
                  JOIN users u ON u.id = CASE WHEN c.requester_id = $1 THEN c.receiver_id ELSE c.requester_id END
@@ -130,11 +131,12 @@ export async function connectionsRoute(app: FastifyInstance) {
                 [userId]
             ),
             // Pending requests where current user is the receiver
-            app.db.query<{ connection_id: string; user_id: string; username: string; bio: string; requested_at: Date }>(
+            app.db.query<{ connection_id: string; user_id: string; username: string; bio: string; avatar_url: string | null; requested_at: Date }>(
                 `SELECT c.id AS connection_id,
                         u.id AS user_id,
                         u.username,
                         LEFT(p.bio, 150) AS bio,
+                        p.avatar_url,
                         c.created_at AS requested_at
                  FROM connections c
                  JOIN users u ON u.id = c.requester_id

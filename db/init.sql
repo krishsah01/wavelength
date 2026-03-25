@@ -12,6 +12,7 @@ CREATE TABLE profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) UNIQUE,
     bio TEXT NOT NULL,
+    avatar_url TEXT DEFAULT NULL,
     embedding VECTOR(1024),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -34,5 +35,16 @@ CREATE TABLE conversation_starters (
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE (user_a_id, user_b_id)
 );
+
+CREATE TABLE messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    connection_id UUID NOT NULL REFERENCES connections(id) ON DELETE CASCADE,
+    sender_id UUID NOT NULL REFERENCES users(id),
+    content TEXT NOT NULL CHECK (char_length(content) <= 1000),
+    is_read BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX ON messages (connection_id, created_at DESC);
 
 CREATE INDEX ON profiles USING hnsw (embedding vector_cosine_ops);

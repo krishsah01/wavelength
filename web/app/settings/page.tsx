@@ -4,6 +4,7 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import api from "@/lib/api";
+import Avatar from "@/components/Avatar";
 
 const MIN_CHARS = 50;
 const MAX_CHARS = 5000;
@@ -43,10 +44,16 @@ export default function SettingsPage() {
   const [bio, setBio] = useState("");
   const [initialBio, setInitialBio] = useState("");
   const [profileLoading, setProfileLoading] = useState(true);
+  const [username, setUsername] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState("");
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
 
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -57,9 +64,11 @@ export default function SettingsPage() {
         const currentBio: string = res.data.profile?.bio ?? "";
         setBio(currentBio);
         setInitialBio(currentBio);
+        setUsername(res.data.profile?.username ?? "");
+        setAvatarUrl(res.data.profile?.avatar_url ?? null);
       })
       .catch(() => {
-        // No profile yet — leave textarea empty
+        // No profile yet — leave fields empty
       })
       .finally(() => setProfileLoading(false));
 
@@ -68,6 +77,29 @@ export default function SettingsPage() {
     };
   }, []);
 
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarError("");
+    setAvatarPreview(URL.createObjectURL(file));
+    setAvatarUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await api.post("/api/profile/avatar", formData);
+      setAvatarUrl(res.data.avatar_url);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setAvatarError(msg ?? "Couldn't upload avatar. Please try again.");
+      setAvatarPreview(null);
+    } finally {
+      setAvatarUploading(false);
+      // Reset input so the same file can be re-selected
+      e.target.value = "";
+    }
+  }
+
+  const hasProfile = !profileLoading && initialBio.length > 0;
   const isDirty = bio !== initialBio;
   const isValid = bio.length >= MIN_CHARS && bio.length <= MAX_CHARS;
 
@@ -113,6 +145,52 @@ export default function SettingsPage() {
       <div className="max-w-2xl mx-auto px-6 py-12">
         <h1 className="text-2xl font-semibold text-[#ede8d8] mb-1">Settings</h1>
         <p className="text-[#9a8870] text-sm mb-10">Manage your profile and account</p>
+
+        {/* Avatar section */}
+        <section className="bg-[#1a1208] border border-[#2d1f1a] rounded-2xl p-8 mb-6">
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-1">
+              <h2 className="text-base font-semibold text-[#ede8d8]">Profile Photo</h2>
+              <span className="text-[#4a3828] text-xs border border-[#2d1f1a] rounded-full px-2 py-0.5">Optional</span>
+            </div>
+            <p className="text-[#9a8870] text-xs leading-relaxed">
+              Shown on your profile and in match cards. Square images work best.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <div className="relative shrink-0">
+              <Avatar
+                username={username || "?"}
+                avatarUrl={avatarPreview ?? avatarUrl}
+                size="lg"
+              />
+              {hasProfile && (
+                <label className={`absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-colors border-2 border-[#0f0d0a] ${avatarUploading ? "bg-[#4a3828]" : "bg-[#e0a548] hover:bg-[#c8923a]"}`}>
+                  <span className="text-[#0f0d0a] text-xs">{avatarUploading ? "…" : "✎"}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={handleFileSelect}
+                    disabled={avatarUploading}
+                  />
+                </label>
+              )}
+            </div>
+            <div>
+              <p className="text-[#ede8d8] text-sm font-medium mb-1">{username || "—"}</p>
+              {hasProfile ? (
+                <p className="text-[#9a8870] text-xs">Click the pencil icon to update your photo</p>
+              ) : (
+                <p className="text-[#4a3828] text-xs">Complete your bio first to enable photo upload</p>
+              )}
+              {avatarError && <p className="text-red-400 text-xs mt-2">{avatarError}</p>}
+              {avatarUploading && <p className="text-[#9a8870] text-xs mt-2">Uploading…</p>}
+              {!avatarUploading && avatarPreview && <p className="text-emerald-400 text-xs mt-2">Avatar updated ✓</p>}
+            </div>
+          </div>
+        </section>
 
         {/* Bio section */}
         <section className="bg-[#1a1208] border border-[#2d1f1a] rounded-2xl p-8 mb-6">

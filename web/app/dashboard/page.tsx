@@ -86,7 +86,7 @@ function SkeletonCard() {
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: "⊞" },
   { label: "Discover",  href: "/dashboard", icon: "◎" },
-  { label: "Messages",  href: "#",           icon: "◻" },
+  { label: "Messages",  href: "/messages",   icon: "◻" },
   { label: "Connections", href: "/connections", icon: "⌘" },
   { label: "Settings", href: "/settings",   icon: "⊙" },
 ];

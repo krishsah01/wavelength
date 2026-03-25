@@ -3,12 +3,15 @@ import cors from '@fastify/cors'
 import rateLimit from '@fastify/rate-limit'
 import cookie from '@fastify/cookie'
 import helmet from '@fastify/helmet'
+import multipart from '@fastify/multipart'
+import websocket from '@fastify/websocket'
 import dbPlugin from "./plugins/db";
 import authRoutes from "./routes/auth";
 import authPlugin from './plugins/auth'
 import profileRoute from "./routes/profile";
 import { matchesRoute } from "./routes/matches";
 import { connectionsRoute } from "./routes/connections";
+import { messagesRoute } from "./routes/messages";
 
 const isProd = process.env.NODE_ENV === 'production'
 
@@ -49,6 +52,9 @@ app.register(helmet, {
 // 3. cookie parser (must be before auth plugin)
 app.register(cookie)
 
+// 3a. multipart (file uploads, 5 MB raw limit)
+app.register(multipart, { limits: { fileSize: 5 * 1024 * 1024 } })
+
 // 4. global rate limit: 100 req/min per IP
 app.register(rateLimit, {
     global: true,
@@ -71,6 +77,9 @@ app.register(rateLimit, {
     },
 })
 
+// 4a. websocket support (real-time messaging)
+app.register(websocket)
+
 //register plugins
 app.register(dbPlugin)
 app.register(authPlugin)
@@ -80,6 +89,7 @@ app.register(authRoutes, { prefix: '/api' })
 app.register(profileRoute, { prefix: "/api" })
 app.register(matchesRoute, { prefix: '/api' })
 app.register(connectionsRoute, { prefix: '/api' })
+app.register(messagesRoute, { prefix: '/api' })
 
 app.get('/health', async (request, reply) => {
     try {

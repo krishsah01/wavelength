@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { UUID } from "node:crypto";
+import sharp from "sharp";
 import { generateEmbedding } from "../services/embedding";
 import { Profile } from "../types/db";
 
@@ -64,12 +65,51 @@ export default async function profileRoute(app: FastifyInstance) {
         }
     })
 
+    // POST /profile/avatar — upload and store a resized avatar
+    app.post('/profile/avatar', { preHandler: app.authenticate }, async (request, reply) => {
+        const { userId } = request.user as { userId: UUID }
+
+        const data = await request.file()
+        if (!data) return reply.code(400).send({ message: 'No file uploaded' })
+
+        const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+        if (!ALLOWED.includes(data.mimetype)) {
+            return reply.code(400).send({ message: 'Only JPEG, PNG, WebP, or GIF allowed' })
+        }
+
+        const buffer = await data.toBuffer()
+
+        const processed = await sharp(buffer)
+            .resize(256, 256, { fit: 'cover', position: 'centre' })
+            .webp({ quality: 80 })
+            .toBuffer()
+
+        if (processed.length > 100 * 1024) {
+            return reply.code(400).send({ message: 'Image too large after processing (max 100 KB)' })
+        }
+
+        const dataUrl = `data:image/webp;base64,${processed.toString('base64')}`
+
+        // UPDATE only — profile must already exist (bio required by onboarding first).
+        // Avoids the bio NOT NULL constraint violation if someone hits this before onboarding.
+        const result = await app.db.query(
+            `UPDATE profiles SET avatar_url = $2 WHERE user_id = $1 RETURNING user_id`,
+            [userId, dataUrl]
+        )
+
+        if (result.rows.length === 0) {
+            return reply.code(404).send({ message: 'Complete onboarding before uploading an avatar' })
+        }
+
+        return reply.code(200).send({ avatar_url: dataUrl, message: 'Avatar updated' })
+    })
+
     // GET /profile/me — returns the authenticated user's own profile
     app.get('/profile/me', { preHandler: app.authenticate }, async (request, reply) => {
         const { userId } = request.user as { userId: UUID }
 
         const profile = await app.db.query<Profile>(
-            'SELECT username, bio, created_at FROM users INNER JOIN profiles ON profiles.user_id = users.id WHERE users.id = $1',
+            'SELECT u.username, p.bio, p.avatar_url, u.created_at FROM users u INNER JOIN profiles p ON p.user_id = u.id WHERE u.id = $1',
             [userId]
         )
 
@@ -88,7 +128,7 @@ export default async function profileRoute(app: FastifyInstance) {
         const { id } = request.params as { id: UUID }
 
         const profile = await app.db.query<Profile>(
-            'SELECT username, bio, created_at FROM users INNER JOIN profiles ON profiles.user_id = users.id WHERE users.id = $1',
+            'SELECT u.username, p.bio, p.avatar_url, u.created_at FROM users u INNER JOIN profiles p ON p.user_id = u.id WHERE u.id = $1',
             [id]
         )
 

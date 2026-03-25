@@ -29,11 +29,11 @@ function bioSnippet(bio: string) {
 }
 
 const NAV_ITEMS = [
-  { label: "Dashboard",   href: "/dashboard",    icon: "⊞" },
-  { label: "Discover",    href: "/dashboard",    icon: "◎" },
-  { label: "Messages",    href: "#",             icon: "◻" },
-  { label: "Connections", href: "/connections",  icon: "⌘", active: true },
-  { label: "Settings",    href: "/settings",     icon: "⊙" },
+  { label: "Dashboard",   href: "/dashboard",   icon: "⊞" },
+  { label: "Discover",    href: "/dashboard",   icon: "◎" },
+  { label: "Messages",    href: "/messages",    icon: "◻" },
+  { label: "Connections", href: "/connections", icon: "⌘", active: true },
+  { label: "Settings",    href: "/settings",    icon: "⊙" },
 ];
 
 export default function ConnectionsPage() {

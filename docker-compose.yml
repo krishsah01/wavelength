@@ -40,7 +40,7 @@ services:
     environment:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       NEXTAUTH_URL: http://localhost:3000
-      
+
       # Server-side-only: NextAuth authorize() uses this at runtime so it can reach the API
       # on the internal Docker network (NEXT_PUBLIC_API_URL is baked at build time for the browser)
       INTERNAL_API_URL: http://api:4000
