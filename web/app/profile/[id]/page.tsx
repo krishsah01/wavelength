@@ -22,7 +22,7 @@ function StarterCard({ text, index }: { text: string; index: number }) {
     const lastSpace = cut.lastIndexOf(" ");
     return lastSpace > 20 ? cut.slice(0, lastSpace) : cut;
   })();
-  const title = rawTitle;
+  const title = rawTitle.trimEnd();
   const body = hasNaturalBreak ? text.slice(dotIndex + 2) : text.slice(title.length).trimStart();
 
   return (

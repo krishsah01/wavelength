@@ -110,7 +110,7 @@ export async function connectionsRoute(app: FastifyInstance) {
         return reply.code(200).send({ message: 'Connection request declined' })
     })
 
-    // GET /api/connections — list accepted connections + pending requests
+    // GET /api/connections — list accepted connections, pending requests, and sent requests
     app.get('/connections', { preHandler: app.authenticate }, async (request, reply) => {
         const { userId } = request.user as { userId: UUID }
 

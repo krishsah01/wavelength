@@ -17,6 +17,9 @@ const handler = NextAuth({
                     // NEXT_PUBLIC_API_URL is baked at build time and resolves for the browser,
                     // but inside Docker it resolves to localhost which isn't the API container.
                     const apiBase = process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL
+                    if (!apiBase) {
+                        throw new Error("API base URL is not configured. Set INTERNAL_API_URL or NEXT_PUBLIC_API_URL.")
+                    }
                     const response = await axios.post(
                         `${apiBase}/api/auth/login`,
                         credentials,
