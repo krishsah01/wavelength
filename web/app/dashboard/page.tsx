@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import api from "@/lib/api";
 import Avatar from "@/components/Avatar";
 
@@ -83,13 +82,6 @@ function SkeletonCard() {
   );
 }
 
-const NAV_ITEMS = [
-  { label: "Dashboard", href: "/dashboard", icon: "⊞" },
-  { label: "Discover",  href: "/dashboard", icon: "◎" },
-  { label: "Messages",  href: "/messages",   icon: "◻" },
-  { label: "Connections", href: "/connections", icon: "⌘" },
-  { label: "Settings", href: "/settings",   icon: "⊙" },
-];
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -114,130 +106,61 @@ export default function DashboardPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#0f0d0a] flex">
-      {/* Sidebar */}
-      <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-[#2d1f1a] py-6 px-4 gap-1">
-        <div className="flex items-center gap-2 px-3 mb-8">
-          <span className="text-[#e0a548] text-xl">≋</span>
-          <span className="font-semibold tracking-wide text-[#ede8d8] text-sm">Wavelength</span>
+    <main className="flex-1 min-w-0 px-6 py-8 md:px-10 pb-24 md:pb-8">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-[#ede8d8]">Your Top Matches</h1>
+          <p className="text-[#9a8870] text-sm mt-1">
+            Handcrafted for your dusk-time frequencies
+          </p>
         </div>
+      </div>
 
-        {NAV_ITEMS.map((item) => {
-          const active = item.href === "/dashboard";
-          return (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                active
-                  ? "bg-[#e0a548]/10 text-[#e0a548] border border-[#e0a548]/20"
-                  : "text-[#9a8870] hover:text-[#ede8d8] hover:bg-[#1a1208]"
-              }`}
-            >
-              <span className="text-base">{item.icon}</span>
-              {item.label}
-            </Link>
-          );
-        })}
-
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-[#9a8870] hover:text-red-400 hover:bg-red-400/5 mt-2"
-        >
-          <span className="text-base">↩</span>
-          Sign out
-        </button>
-
-        {/* Premium upsell */}
-        <div className="mt-auto mx-1 bg-[#1a1208] border border-[#2d1f1a] rounded-xl p-4">
-          <p className="text-[#e0a548] text-xs font-semibold tracking-wider uppercase mb-1">
-            Premium Rune
-          </p>
-          <p className="text-[#9a8870] text-xs leading-relaxed mb-3">
-            Unlock deep sentiment insights and unlimited matches.
-          </p>
-          <button className="w-full py-2 bg-[#e0a548] text-[#0f0d0a] text-xs font-semibold rounded-lg hover:bg-[#c8923a] transition-colors">
-            Upgrade Now
+      {/* Grid */}
+      {loading ? (
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : error ? (
+        <div className="text-center py-24">
+          <p className="text-[#9a8870] mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 border border-[#2d1f1a] text-[#9a8870] rounded-full hover:border-[#4a3828] text-sm transition-colors"
+          >
+            Try again
           </button>
         </div>
-      </aside>
-
-      {/* Main */}
-      <main className="flex-1 min-w-0 px-6 py-8 md:px-10">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-semibold text-[#ede8d8]">Your Top Matches</h1>
-            <p className="text-[#9a8870] text-sm mt-1">
-              Handcrafted for your dusk-time frequencies
-            </p>
-          </div>
-        </div>
-
-        {/* Grid */}
-        {loading ? (
-          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
-            {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
-          </div>
-        ) : error ? (
-          <div className="text-center py-24">
-            <p className="text-[#9a8870] mb-4">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-2 border border-[#2d1f1a] text-[#9a8870] rounded-full hover:border-[#4a3828] text-sm transition-colors"
-            >
-              Try again
-            </button>
-          </div>
-        ) : matches.length === 0 ? (
-          <div className="text-center py-24">
-            <p className="font-display text-2xl text-[#ede8d8] italic mb-3">
-              No matches yet
-            </p>
-            <p className="text-[#9a8870] text-sm mb-6">
-              The signal is still searching. Check back once more people join.
-            </p>
-            <Link
-              href="/settings"
-              className="px-6 py-2.5 bg-[#e0a548] text-[#0f0d0a] font-semibold rounded-full text-sm hover:bg-[#c8923a] transition-colors"
-            >
-              Update your bio
-            </Link>
-          </div>
-        ) : (
-          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
-            {matches.map((m) => <MatchCard key={m.user_id} match={m} />)}
-          </div>
-        )}
-
-        {/* Discover more */}
-        {!loading && matches.length > 0 && (
-          <div className="mt-10 text-center">
-            <button className="px-6 py-2.5 border border-[#2d1f1a] text-[#9a8870] rounded-full text-sm hover:border-[#4a3828] hover:text-[#ede8d8] transition-colors">
-              ◎ Discover More Frequencies
-            </button>
-          </div>
-        )}
-      </main>
-
-      {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0f0d0a] border-t border-[#2d1f1a] flex">
-        {[
-          { label: "Home", href: "/dashboard", icon: "⊞" },
-          { label: "Explore", href: "/dashboard", icon: "◎" },
-          { label: "Chat", href: "#", icon: "◻" },
-          { label: "Profile", href: "/settings", icon: "◉" },
-        ].map((item) => (
+      ) : matches.length === 0 ? (
+        <div className="text-center py-24">
+          <p className="font-display text-2xl text-[#ede8d8] italic mb-3">
+            No matches yet
+          </p>
+          <p className="text-[#9a8870] text-sm mb-6">
+            The signal is still searching. Check back once more people join.
+          </p>
           <Link
-            key={item.label}
-            href={item.href}
-            className="flex-1 flex flex-col items-center py-3 gap-1 text-[#9a8870] hover:text-[#e0a548] transition-colors"
+            href="/settings"
+            className="px-6 py-2.5 bg-[#e0a548] text-[#0f0d0a] font-semibold rounded-full text-sm hover:bg-[#c8923a] transition-colors"
           >
-            <span className="text-lg">{item.icon}</span>
-            <span className="text-[10px]">{item.label}</span>
+            Update your bio
           </Link>
-        ))}
-      </nav>
-    </div>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
+          {matches.map((m) => <MatchCard key={m.user_id} match={m} />)}
+        </div>
+      )}
+
+      {/* Discover more */}
+      {!loading && matches.length > 0 && (
+        <div className="mt-10 text-center">
+          <button className="px-6 py-2.5 border border-[#2d1f1a] text-[#9a8870] rounded-full text-sm hover:border-[#4a3828] hover:text-[#ede8d8] transition-colors">
+            ◎ Discover More Frequencies
+          </button>
+        </div>
+      )}
+    </main>
   );
 }

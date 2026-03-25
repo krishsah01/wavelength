@@ -21,7 +21,7 @@ CREATE TABLE connections (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     requester_id UUID REFERENCES users(id),
     receiver_id UUID REFERENCES users(id),
-    status TEXT NOT NULL DEFAULT 'pending',
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted')),
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE (requester_id, receiver_id)
 );
@@ -39,7 +39,7 @@ CREATE TABLE conversation_starters (
 CREATE TABLE messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     connection_id UUID NOT NULL REFERENCES connections(id) ON DELETE CASCADE,
-    sender_id UUID NOT NULL REFERENCES users(id),
+    sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     content TEXT NOT NULL CHECK (char_length(content) <= 1000),
     is_read BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
