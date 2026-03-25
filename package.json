@@ -1,0 +1,25 @@
+{
+  "name": "wavelength",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "up": "docker compose up",
+    "up:build": "docker compose up --build",
+    "up:detach": "docker compose up -d",
+    "up:detach:build": "docker compose up -d --build",
+    "down": "docker compose down",
+    "down:volumes": "docker compose down -v",
+    "restart": "docker compose restart",
+    "restart:api": "docker compose restart api",
+    "restart:web": "docker compose restart web",
+    "logs": "docker compose logs -f",
+    "logs:api": "docker compose logs -f api",
+    "logs:web": "docker compose logs -f web",
+    "logs:db": "docker compose logs -f postgres",
+    "ps": "docker compose ps",
+    "build": "docker compose build",
+    "build:api": "docker compose build api",
+    "build:web": "docker compose build web",
+    "db:reset": "docker compose down -v && docker compose up -d postgres"
+  }
+}
