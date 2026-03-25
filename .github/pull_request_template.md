@@ -1,11 +1,12 @@
 ## What does this PR do?
 
-Fixes sidebar nav inconsistencies between the Dashboard and Connections pages, and adds a Sign out button to both sidebars.
+Adds an avatar upload step to the onboarding flow, making it a skippable two-step experience: bio entry (existing, Step 3) → avatar upload (new, Step 4).
 
-- **Active nav state**: Connections page was using a solid amber fill (`bg-[#e0a548]`) for the active item; now matches Dashboard's subtle tint style (`bg-[#e0a548]/10` with amber border and text)
-- **Nav items list**: Connections sidebar was showing only 3 items in a different order; expanded to the full 5-item list (Dashboard, Discover, Messages, Connections, Settings) matching Dashboard
-- **Sign out button**: Added a consistent `↩ Sign out` button at the bottom of the nav list in both sidebars, styled as a muted nav item with a red hover state, calling `signOut({ callbackUrl: "/login" })`
-- **Avatar component**: Both pages now use the shared `Avatar` component instead of inline initials divs, and `avatar_url` was added to the relevant TypeScript interfaces
+- After the bio is saved successfully, the page transitions to a new avatar step (Step 4 of 5, 80% progress) without a full page navigation
+- The avatar step shows a large circular preview that doubles as the file picker trigger — displays the user's initials (fetched via `/api/profile/me`) before a photo is selected, then shows a live preview with a "Change" hover overlay once a file is picked
+- "Upload & Continue" POSTs the file as `multipart/form-data` to the existing `/api/profile/avatar` endpoint, then redirects to `/dashboard`
+- Users can skip the avatar step via "Skip for now" (inline button) or "Skip" (top-right nav), both routing directly to `/dashboard`
+- The bio step is unchanged in behaviour; state is lifted and scoped (`bioLoading`/`bioError` vs `avatarLoading`/`avatarError`) so the two steps don't interfere
 
 ## Related Issue
 
@@ -13,9 +14,9 @@ Closes #
 
 ## Type of change
 
-- [ ] New feature
-- [x] Bug fix
-- [x] Refactor
+- [x] New feature
+- [ ] Bug fix
+- [ ] Refactor
 - [ ] DevOps / config
 
 ## Checklist
@@ -26,10 +27,10 @@ Closes #
 
 ## Code Review Notes
 
-- The `signOut` import was already used in `settings/page.tsx`, so this follows the established pattern
-- The connections sidebar previously lacked the Wavelength logo header (it was in a top `<header>` instead); this structural difference is intentional and not changed here — the logo still appears in the top bar on the connections page
-- `avatar_url` fields added to `PendingRequest` and `Connection` interfaces in connections page, and `Match` interface in dashboard page, to support the Avatar component properly
+- The backend's `POST /profile/avatar` intentionally rejects requests where no profile row exists yet (`UPDATE ... RETURNING` returns 0 rows → 404). This is enforced by ordering: bio must be saved before the avatar step is shown, so this constraint is naturally satisfied.
+- `URL.createObjectURL` is used for the local preview; this is not revoked on unmount. Since the component unmounts by navigating away, this is acceptable but could be cleaned up with a `useEffect` return if memory becomes a concern.
+- Username is fetched via a secondary `/api/profile/me` call after bio save purely for the initials preview. This is best-effort (wrapped in its own try/catch) — the avatar step works fine without it.
 
 ## Summary
 
-Aligns the sidebar navigation UI across Dashboard and Connections pages — consistent active state style, identical nav item sets, and a Sign out button available everywhere — and replaces ad-hoc initials avatars with the shared Avatar component.
+Converts the single-step onboarding page into a two-step flow by adding an optional, skippable avatar upload step after bio entry. Leverages the existing `/api/profile/avatar` backend endpoint and the shared `Avatar` component pattern.
